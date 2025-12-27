@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <meta charset="utf-8">
+      <title>Browser Assistant</title>
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+         /* Root sizing for flex layout */ 
+         html, body { height: 100%; }
+         /* Basic Layout & Theme */
+         body {
+         display: flex;               /* enable vertical layout */
+         flex-direction: column;
+         min-height: 100vh;           /* fill side panel height */
+         min-width: 300px;
+         font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         background-color: #f5f1ec;
+         color: #191919;
+         margin: 0;
+         padding: 16px;
+         font-size: 14px;
+         box-sizing: border-box;
+         }
+         /* Content area that grows (everything below the topbar) */
+         .content {
+         display: flex;
+         flex-direction: column;
+         flex: 1 1 auto;              /* take remaining height under the topbar */
+         min-height: 0;               /* allow children to shrink within */
+         }
+         /* Top bar with icon and model picker (dropdown) */
+         .topbar {
+         display: flex;
+         align-items: center;
+         justify-content: space-between;
+         margin-bottom: 8px;
+         flex: 0 0 auto;
+         }
+         .brand {
+         display: flex;
+         align-items: center;
+         gap: 8px;
+         color: #191919;
+         }
+         .brand img {
+         width: 20px;
+         height: 20px;
+         border-radius: 4px;
+         }
+         .brand-title {
+         font-size: 16px;
+         font-weight: 600;
+         margin: 0;
+         }
+         .model-picker {
+         display: flex;
+         align-items: center;
+         gap: 6px;
+         }
+         .model-picker label {
+         font-size: 12px;
+         color: #555;
+         }
+         #model-select {
+         font-size: 12px;
+         padding: 4px 6px;
+         border: 1px solid #e8e4df;
+         border-radius: 6px;
+         background: #fff;
+         max-width: 200px;
+         }
+         h2 {
+         font-size: 16px;
+         color: #191919;
+         border-bottom: 1px solid #e8e4df;
+         padding-bottom: 8px;
+         margin-top: 12px;
+         margin-bottom: 10px;
+         flex: 0 0 auto;
+         }
+         .summary-header {
+         display: flex;
+         align-items: center;
+         justify-content: space-between;
+         border-bottom: 1px solid #e8e4df;
+         padding-bottom: 8px;
+         margin-top: 12px;
+         margin-bottom: 10px;
+         flex: 0 0 auto;
+         }
+         .summary-header h2 {
+         margin: 0;
+         border: none;
+         padding: 0;
+         }
+         .refresh-btn {
+         background: none;
+         border: 1px solid #e8e4df;
+         border-radius: 6px;
+         padding: 4px 8px;
+         font-size: 12px;
+         cursor: pointer;
+         color: #191919;
+         display: flex;
+         align-items: center;
+         gap: 4px;
+         transition: background-color 0.2s;
+         }
+         .refresh-btn:hover {
+         background-color: #f5f1ec;
+         }
+         .refresh-btn:disabled {
+         opacity: 0.5;
+         cursor: not-allowed;
+         }
+         /* Summary Section: resizable vertically */
+         #summary-container {
+         background-color: #ffffff;
+         border: 1px solid #e8e4df;
+         border-radius: 8px;
+         padding: 12px;
+         margin-bottom: 16px;
+         min-height: 80px;
+         height: 180px;          /* initial height */
+         overflow: auto;         /* required for resize to work */
+         resize: vertical;       /* allow user to drag up/down */
+         box-sizing: border-box; /* include padding/border in height */
+         flex: 0 0 auto;         /* keep own height; don't flex */
+         }
+         /* The inner summary HTML area */
+         #summary {
+         white-space: pre-wrap;
+         word-wrap: break-word;
+         }
+         /* Chat Section: fills remaining space automatically */
+         #chat-box {
+         background-color: #ffffff;
+         border: 1px solid #e8e4df;
+         border-radius: 8px;
+         padding: 12px;
+         min-height: 120px;
+         margin-bottom: 12px;
+         display: flex;
+         flex-direction: column;
+         gap: 8px;
+         box-sizing: border-box;
+         /* Key: take all remaining space after summary-container */
+         flex: 1 1 auto;
+         overflow: auto;         /* scroll within chat when needed */
+         /* Note: removed resize here so it auto-fills remaining space */
+         }
+         .chat-message {
+         padding: 8px 12px;
+         border-radius: 18px;
+         max-width: 85%;
+         word-wrap: break-word;
+         line-height: 1.4;
+         }
+         /* User message aligns right */
+         .user-message {
+         background-color: #0084ff;
+         color: white;
+         align-self: flex-end;
+         text-align: left;
+         }
+         /* AI message aligns left */
+         .ai-message {
+         background-color: #e8e4df;
+         color: #191919;
+         align-self: flex-start;
+         text-align: left;
+         }
+         /* Input Form */
+         #chat-form {
+         display: flex;
+         gap: 8px;
+         flex: 0 0 auto; /* form stays at natural height at bottom */
+         }
+         #prompt {
+         flex-grow: 1;
+         border: 1px solid #e8e4df;
+         border-radius: 18px;
+         padding: 8px 14px;
+         font-size: 14px;
+         outline: none;
+         }
+         #prompt:focus {
+         border-color: #0084ff;
+         }
+         button[type="submit"] {
+         background-color: #e8e4df;
+         color: #191919;
+         border: 1px solid #e8e4df;
+         border-radius: 50%;
+         width: 36px;
+         height: 36px;
+         font-size: 24px;
+         line-height: 36px;
+         cursor: pointer;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         transition: background-color 0.2s;
+         flex-shrink: 0;
+         }
+         button[type="submit"]:hover {
+         background-color: #d8d4cf;
+         }
+         /* Loader Animation */
+         .loader {
+         display: none; /* Hidden by default */
+         text-align: center;
+         padding: 10px;
+         flex: 0 0 auto;
+         }
+         .thinking-dots {
+         display: inline-block;
+         position: relative;
+         width: 60px;
+         height: 15px;
+         }
+         .thinking-dots div {
+         position: absolute;
+         top: 5px;
+         width: 10px;
+         height: 10px;
+         border-radius: 50%;
+         background: #0084ff;
+         animation-timing-function: cubic-bezier(0, 1, 1, 0);
+         }
+         .thinking-dots div:nth-child(1) { left: 6px; animation: thinking-dots1 0.6s infinite; }
+         .thinking-dots div:nth-child(2) { left: 6px; animation: thinking-dots2 0.6s infinite; }
+         .thinking-dots div:nth-child(3) { left: 26px; animation: thinking-dots2 0.6s infinite; }
+         .thinking-dots div:nth-child(4) { left: 45px; animation: thinking-dots3 0.6s infinite; }
+         @keyframes thinking-dots1 { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+         @keyframes thinking-dots3 { 0% { transform: scale(1); } 100% { transform: scale(0); } }
+         @keyframes thinking-dots2 { 0% { transform: translate(0, 0); } 100% { transform: translate(19px, 0); } }
+         /* Model Configuration Panel */
+         .config-panel {
+         background-color: #ffffff;
+         border: 1px solid #e8e4df;
+         border-radius: 8px;
+         padding: 12px;
+         margin-bottom: 16px;
+         display: none; /* Hidden by default, shown when configure button clicked */
+         flex: 0 0 auto;
+         }
+         .config-panel.visible {
+         display: block;
+         }
+         .config-header {
+         display: flex;
+         justify-content: space-between;
+         align-items: center;
+         margin-bottom: 12px;
+         }
+         .config-header h3 {
+         margin: 0;
+         font-size: 14px;
+         font-weight: 600;
+         color: #191919;
+         }
+         .config-close {
+         background: none;
+         border: none;
+         font-size: 20px;
+         cursor: pointer;
+         color: #65676b;
+         padding: 0;
+         width: 24px;
+         height: 24px;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         border-radius: 4px;
+         }
+         .config-close:hover {
+         background-color: #f5f1ec;
+         }
+         .config-field {
+         margin-bottom: 12px;
+         }
+         .config-field label {
+         display: block;
+         font-size: 12px;
+         font-weight: 500;
+         color: #191919;
+         margin-bottom: 4px;
+         }
+         .config-field input,
+         .config-field select {
+         width: 100%;
+         padding: 8px;
+         border: 1px solid #e8e4df;
+         border-radius: 6px;
+         font-size: 13px;
+         box-sizing: border-box;
+         }
+         .config-field input:focus,
+         .config-field select:focus {
+         outline: none;
+         border-color: #0084ff;
+         }
+         .config-field .help-text {
+         font-size: 11px;
+         color: #65676b;
+         margin-top: 4px;
+         }
+         .config-field .error-text {
+         font-size: 11px;
+         color: #d93025;
+         margin-top: 4px;
+         }
+         .config-description {
+         font-size: 12px;
+         color: #65676b;
+         margin-bottom: 12px;
+         padding: 8px;
+         background-color: #f5f1ec;
+         border-radius: 4px;
+         }
+         .config-actions {
+         display: flex;
+         gap: 8px;
+         justify-content: flex-end;
+         margin-top: 12px;
+         }
+         .btn {
+         padding: 8px 16px;
+         border-radius: 6px;
+         font-size: 13px;
+         font-weight: 500;
+         cursor: pointer;
+         border: none;
+         transition: background-color 0.2s;
+         }
+         .btn-primary {
+         background-color: #0084ff;
+         color: white;
+         }
+         .btn-primary:hover {
+         background-color: #0073e0;
+         }
+         .btn-secondary {
+         background-color: #e8e4df;
+         color: #191919;
+         }
+         .btn-secondary:hover {
+         background-color: #d8d4cf;
+         }
+         .configure-btn {
+         background: none;
+         border: 1px solid #e8e4df;
+         border-radius: 6px;
+         padding: 4px 8px;
+         font-size: 12px;
+         cursor: pointer;
+         color: #191919;
+         margin-left: 6px;
+         }
+         .configure-btn:hover {
+         background-color: #f5f1ec;
+         }
+         .configure-btn.needs-config {
+         background-color: #fff3cd;
+         border-color: #ffc107;
+         color: #856404;
+         animation: pulse 2s infinite;
+         }
+         @keyframes pulse {
+         0%, 100% { opacity: 1; }
+         50% { opacity: 0.7; }
+         }
+         .config-warning {
+         background-color: #fff3cd;
+         border: 1px solid #ffc107;
+         border-radius: 8px;
+         padding: 12px;
+         margin-bottom: 16px;
+         display: none;
+         flex: 0 0 auto;
+         }
+         .config-warning.visible {
+         display: flex;
+         align-items: center;
+         gap: 8px;
+         }
+         .config-warning-icon {
+         font-size: 20px;
+         flex-shrink: 0;
+         }
+         .config-warning-text {
+         font-size: 13px;
+         color: #856404;
+         flex: 1;
+         }
+         .config-warning-btn {
+         background-color: #ffc107;
+         color: #000;
+         border: none;
+         border-radius: 6px;
+         padding: 6px 12px;
+         font-size: 12px;
+         font-weight: 500;
+         cursor: pointer;
+         white-space: nowrap;
+         }
+         .config-warning-btn:hover {
+         background-color: #e0a800;
+         }
+      </style>
+   </head>
+   <body>
+      <!-- Top bar with icon (from icons folder) and model dropdown placeholder --> 
+      <div class="topbar">
+         <div class="brand">
+            <img src="icons/duck_48.png" alt="rubber duck icon">
+            <h1 class="brand-title">Browser Assistant</h1>
+         </div>
+         <div class="model-picker">
+            <label for="model-select">Model</label>
+            <select id="model-select" aria-label="Select AI model">
+               <option selected disabled>Loading models…</option>
+               <!-- sidepanel.js should populate this list dynamically -->
+            </select>
+            <button class="configure-btn" id="configure-btn" title="Configure model">⚙️</button>
+         </div>
+      </div>
+      <!-- Current Page Indicator -->
+      <div id="current-page-indicator" style="font-size: 11px; color: #65676b; padding: 4px 0; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="">
+         <!-- Will be populated with current tab info -->
+      </div>
+      <!-- Scroll/resize-aware content area -->
+      <div class="content">
+         <!-- Configuration Warning Banner (hidden by default) -->
+         <div id="config-warning" class="config-warning">
+            <div class="config-warning-icon">⚠️</div>
+            <div class="config-warning-text">
+               <strong>Configuration Required</strong><br>
+               This model needs to be configured before use.
+            </div>
+            <button class="config-warning-btn" id="config-warning-btn">Configure Now</button>
+         </div>
+         <!-- Model Configuration Panel (hidden by default) -->
+         <div id="config-panel" class="config-panel">
+            <div class="config-header">
+               <h3>Model Configuration</h3>
+               <button class="config-close" id="config-close" aria-label="Close configuration">×</button>
+            </div>
+            <div id="config-description" class="config-description"></div>
+            <div id="config-fields"></div>
+            <div class="config-actions">
+               <button class="btn btn-secondary" id="config-cancel">Cancel</button>
+               <button class="btn btn-primary" id="config-save">Save</button>
+            </div>
+         </div>
+         <div class="summary-header">
+            <h2>Webpage Summary</h2>
+            <button class="refresh-btn" id="summarize-btn" title="Summarize this page">
+               <span>📝</span>
+               <span>Summarize</span>
+            </button>
+         </div>
+         <div id="summary-container">
+            <div class="loader" id="summary-loader">
+               <div class="thinking-dots">
+                  <div></div>
+                  <div></div>
+                  <div></div>
+                  <div></div>
+               </div>
+            </div>
+            <div id="summary"></div>
+         </div>
+         <h2>Chat</h2>
+         <div id="chat-box"></div>
+         <div class="loader" id="chat-loader">
+            <div class="thinking-dots">
+               <div></div>
+               <div></div>
+               <div></div>
+               <div></div>
+            </div>
+         </div>
+         <form id="chat-form">
+            <input type="text" id="prompt" placeholder="Ask anything..." autocomplete="off"/>
+            <button type="submit" aria-label="Send">
+               <img src="icons/arrows.png" alt="Send" style="width: 20px; height: 20px;">
+            </button>
+         </form>
+      </div>
+      <!-- Libraries and main panel script -->
+      <script src="libs/marked.umd.js"></script>
+      <script src="libs/purify.min.js"></script>
+      <!-- Background API for communicating with model system -->
+      <script src="src/plugin/plugin-api.js"></script>
+      <!-- Main panel script -->
+      <script src="src/plugin/plugin.js"></script>
+   </body>
+</html>
