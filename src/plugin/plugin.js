@@ -672,6 +672,47 @@ document.addEventListener('DOMContentLoaded', async () => {
       setChatDisabled(true);
       setChatLoading(true);
 
+      // Check if this is an action command
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const isActionResponse = await chrome.tabs.sendMessage(tab.id, {
+          action: 'is_action_command',
+          input: userPrompt
+        });
+
+        if (isActionResponse && isActionResponse.isAction) {
+          console.log('Detected action command, routing to action system');
+
+          // Execute action in content script
+          const actionResponse = await chrome.tabs.sendMessage(tab.id, {
+            action: 'execute_action',
+            command: userPrompt
+          });
+
+          // Add action result to chatbox
+          const actionMessageDiv = document.createElement('div');
+          actionMessageDiv.className = 'chat-message ai-message';
+
+          if (actionResponse.success) {
+            actionMessageDiv.textContent = `✓ ${actionResponse.message}`;
+          } else {
+            actionMessageDiv.textContent = `✗ ${actionResponse.error || 'Action failed'}`;
+          }
+
+          chatBox.appendChild(actionMessageDiv);
+          chatBox.scrollTop = chatBox.scrollHeight;
+
+          // Re-enable chat
+          setChatLoading(false);
+          setChatDisabled(false);
+          promptField.focus();
+          return; // Don't proceed to regular chat
+        }
+      } catch (error) {
+        console.log('Action check failed, proceeding as regular chat:', error);
+        // If action check fails, proceed with regular chat
+      }
+
       // Build system prompt and user prompt based on available context
       let systemPrompt, chatUserPrompt;
 

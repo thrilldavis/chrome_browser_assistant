@@ -8,6 +8,7 @@ Browser Assistant adds an AI-powered side panel to Chrome that can:
 
 - **Summarize web pages** - Extract and summarize the main content from any webpage using intelligent content parsing (powered by Readability.js)
 - **Chat about pages** - Have multi-turn conversations with AI about the current page's content
+- **Execute actions** - Perform actions on web pages with natural language commands (reply to emails, compose messages, and more)
 - **General chat** - Use it as a general AI assistant even without page context
 - **Switch models on the fly** - Change between different AI models without losing your conversation history
 
@@ -35,6 +36,27 @@ Choose from multiple AI providers:
 - Current page indicator shows which page you're chatting about
 - Visual feedback for loading states
 
+### Intelligent Actions System (NEW!)
+Execute actions on web pages using natural language:
+
+**Gmail Actions:**
+- **Reply to emails**: Type "reply to this email" to generate an AI-powered response
+- **Compose emails**: Type "compose email to john@example.com about the project" to draft new messages
+- Uses accessibility-first approach for reliability across Gmail UI updates
+
+**How Actions Work:**
+1. Type a natural language command (e.g., "reply to this email saying I'll be out of office")
+2. AI analyzes your intent and the page context
+3. Generates appropriate content
+4. Shows you a confirmation overlay with editable preview
+5. Executes the action only after your approval
+
+**Safety Features:**
+- Always shows confirmation before executing
+- Never auto-sends emails - only fills compose areas
+- All generated content is editable before applying
+- Uses ARIA accessibility attributes for robust, reliable interactions
+
 ## Installation
 
 1. Clone or download this repository
@@ -57,11 +79,23 @@ Choose from multiple AI providers:
 
 ### Using the Extension
 
+**Basic Usage:**
 1. Navigate to any webpage
 2. Click the extension icon to open the side panel
 3. **To chat about the page**: Click "Summarize" first to give the AI context about the page
 4. **To chat generally**: Just start typing in the chat box
 5. Have a conversation - the AI remembers the context of your discussion
+
+**Using Actions (Gmail):**
+1. Open Gmail and view an email
+2. Open the Browser Assistant side panel
+3. Type an action command:
+   - "reply to this email"
+   - "reply saying I'll be out of office next week"
+   - "compose email to john@example.com about the project update"
+4. Review the AI-generated content in the confirmation overlay
+5. Edit if needed, then click "Apply" to fill Gmail's compose area
+6. Review in Gmail and send when ready
 
 ## Known Limitations
 
@@ -86,11 +120,12 @@ The extension cannot access content from certain Chrome system pages:
 
 ### Planned Features
 
-#### Interactive Actions
-- **Click elements**: "Click the login button"
-- **Fill forms**: "Fill out this form with my information"
-- **Navigate pages**: "Go to the next page" or "Scroll to the comments"
-- **Extract data**: "Get all the links from this page"
+#### Expanded Actions
+- **Salesforce integration**: Add notes, update opportunities, create tasks
+- **ServiceNow integration**: Update incidents, add comments, resolve tickets
+- **Dynamic actions**: AI-powered actions on any website (partially implemented)
+- **Form automation**: Fill complex forms with AI assistance
+- **Data extraction**: Extract and format data from tables and lists
 
 #### Enhanced Understanding
 - **Multi-page context**: Summarize and remember content across multiple tabs
@@ -115,6 +150,11 @@ The extension cannot access content from certain Chrome system pages:
 ```
 chrome_browser_assistant/
 ├── src/
+│   ├── actions/        # Action system (NEW!)
+│   │   ├── base/       # BaseAction class
+│   │   ├── core/       # Registry, scanner, parser
+│   │   ├── ui/         # Confirmation overlays
+│   │   └── providers/  # Gmail, Fallback providers
 │   ├── background/     # Service worker & model registry
 │   ├── plugin/         # Side panel UI & logic
 │   └── content/        # Content extraction scripts

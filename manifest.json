@@ -29,6 +29,19 @@
   },
   "content_scripts": [{
     "matches": ["<all_urls>"],
-    "js": ["src/content/content.js"]
+    "js": [
+      "src/content/content.js",
+      "src/actions/base/BaseAction.js",
+      "src/actions/core/AccessibilityScanner.js",
+      "src/actions/core/IntentParser.js",
+      "src/actions/ui/ConfirmationOverlay.js",
+      "src/actions/providers/gmail/GmailProvider.js",
+      "src/actions/providers/gmail/actions/ReplyAction.js",
+      "src/actions/providers/gmail/actions/ComposeAction.js",
+      "src/actions/providers/fallback/FallbackProvider.js",
+      "src/actions/providers/fallback/actions/GenericAction.js",
+      "src/actions/core/ActionRegistry.js",
+      "src/actions/actions-loader.js"
+    ]
   }]
 }

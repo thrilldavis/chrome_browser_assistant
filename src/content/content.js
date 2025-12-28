@@ -38,4 +38,51 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
     }
   }
+
+  // Handle action execution requests
+  if (request.action === 'execute_action') {
+    console.log('content.js: Executing action command:', request.command);
+
+    // Execute asynchronously
+    (async () => {
+      try {
+        const registry = window.browserAssistantActionRegistry;
+        if (!registry) {
+          sendResponse({
+            success: false,
+            error: 'Action system not initialized'
+          });
+          return;
+        }
+
+        const result = await registry.handleCommand(request.command);
+
+        sendResponse({
+          success: result.success,
+          message: result.message,
+          data: result.data
+        });
+      } catch (error) {
+        console.error('Error executing action:', error);
+        sendResponse({
+          success: false,
+          error: error.message
+        });
+      }
+    })();
+
+    return true; // Indicate async response
+  }
+
+  // Check if input is an action command
+  if (request.action === 'is_action_command') {
+    const registry = window.browserAssistantActionRegistry;
+    if (registry) {
+      const isAction = registry.isActionCommand(request.input);
+      sendResponse({ isAction: isAction });
+    } else {
+      sendResponse({ isAction: false });
+    }
+    return true;
+  }
 });
