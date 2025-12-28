@@ -142,7 +142,7 @@ This is a personal project, but suggestions and feedback are welcome! Feel free 
 
 ## License
 
-MIT License - See LICENSE file for details
+Apache 2.0 license
 
 ## Version
 
