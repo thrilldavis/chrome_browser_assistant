@@ -26,10 +26,8 @@ class OpenAIModel extends BaseModel {
         required: true,
         defaultValue: 'gpt-4.1-mini',
         options: [
-          { value: 'gpt-4o', label: 'GPT-4o (Most Capable)' },
-          { value: 'gpt-4o-mini', label: 'GPT-4o Mini (Recommended)' },
-          { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-          { value: 'gpt-4', label: 'GPT-4' },
+          { value: 'gpt-5.2', label: 'GPT-52 (Most Capable)' },
+          { value: 'gpt-5-mini', label: 'GPT-45 Mini' },
           { value: 'gpt-4.1-mini', label: 'GPT-4.1 Mini' },
           { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo (Fast & Affordable)' }
         ]

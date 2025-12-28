@@ -65,11 +65,27 @@ class ConfigurationUI {
   }
 
   initEventListeners() {
-    this.configureBtn.addEventListener('click', () => this.show());
-    this.configCloseBtn.addEventListener('click', () => this.hide());
-    this.configCancelBtn.addEventListener('click', () => this.hide());
-    this.configSaveBtn.addEventListener('click', () => this.save());
-    this.configWarningBtn.addEventListener('click', () => this.show());
+    if (this.configureBtn) {
+      this.configureBtn.addEventListener('click', () => {
+        console.log('Configure button clicked');
+        this.show();
+      });
+    } else {
+      console.error('Configure button not found in DOM');
+    }
+
+    if (this.configCloseBtn) {
+      this.configCloseBtn.addEventListener('click', () => this.hide());
+    }
+    if (this.configCancelBtn) {
+      this.configCancelBtn.addEventListener('click', () => this.hide());
+    }
+    if (this.configSaveBtn) {
+      this.configSaveBtn.addEventListener('click', () => this.save());
+    }
+    if (this.configWarningBtn) {
+      this.configWarningBtn.addEventListener('click', () => this.show());
+    }
   }
 
   /**
@@ -116,7 +132,10 @@ class ConfigurationUI {
    * @param {string} modelId
    */
   async show(modelId = null) {
+    console.log('ConfigurationUI.show() called with modelId:', modelId);
+
     this.currentModelId = modelId || await BackgroundAPI.getCurrentModel();
+    console.log('Current model ID:', this.currentModelId);
 
     if (!this.currentModelId) {
       alert('Please select a model first');
@@ -124,7 +143,9 @@ class ConfigurationUI {
     }
 
     // Get model info from background
-    const models = await BackgroundAPI.getModelList();
+    const response = await BackgroundAPI.getModelList();
+    console.log('getModelList response:', response);
+    const models = response.models || [];
     const modelInfo = models.find(m => m.id === this.currentModelId);
     if (!modelInfo) {
       alert('Model not found');
@@ -143,6 +164,7 @@ class ConfigurationUI {
     this.renderFields(fields);
 
     // Show panel
+    console.log('Showing config panel');
     this.configPanel.classList.add('visible');
   }
 

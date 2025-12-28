@@ -26,11 +26,9 @@ class ClaudeModel extends BaseModel {
         required: true,
         defaultValue: 'claude-3-5-sonnet-20241022',
         options: [
-          { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet (Recommended)' },
-          { value: 'claude-3-5-haiku-20241022', label: 'Claude 3.5 Haiku (Fast & Affordable)' },
-          { value: 'claude-3-opus-20240229', label: 'Claude 3 Opus (Most Capable)' },
-          { value: 'claude-3-sonnet-20240229', label: 'Claude 3 Sonnet' },
-          { value: 'claude-3-haiku-20240307', label: 'Claude 3 Haiku' }
+          { value: 'claude-opus-4-5', label: 'Claude 4.5 Opus (Most Capable)' },
+          { value: 'claude-sonnet-4-5', label: 'Claude 4.5 Sonnet' },
+          { value: 'claude-haiku-4-5', label: 'Claude 4.5 Haiku (Fast & Affordable)' }
         ]
       },
       {
@@ -70,7 +68,8 @@ class ClaudeModel extends BaseModel {
         headers: {
           'Content-Type': 'application/json',
           'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
         },
         body: JSON.stringify({
           model: modelName,
