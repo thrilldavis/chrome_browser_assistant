@@ -44,7 +44,8 @@ class ConfirmationOverlay {
       content = '',
       editable = true,
       target = null,
-      warning = null
+      warning = null,
+      buttonText = 'Apply'
     } = options;
 
     this.overlay = document.createElement('div');
@@ -71,7 +72,7 @@ class ConfirmationOverlay {
         </div>
         <div class="overlay-footer">
           <button class="overlay-btn overlay-btn-cancel">Cancel</button>
-          <button class="overlay-btn overlay-btn-primary overlay-btn-approve">Apply</button>
+          <button class="overlay-btn overlay-btn-primary overlay-btn-approve">${this.escapeHtml(buttonText)}</button>
         </div>
       </div>
     `;

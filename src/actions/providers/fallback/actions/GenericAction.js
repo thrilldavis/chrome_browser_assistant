@@ -35,18 +35,25 @@ class GenericAction extends BaseAction {
    * @returns {Promise<ActionResult>}
    */
   async run(userCommand) {
+    console.log('[GenericAction] Starting generic action for command:', userCommand);
+
     try {
       // Step 1: Get LLM to plan the action
+      console.log('[GenericAction] Requesting action plan from LLM...');
       const plan = await this.provider.planAction(userCommand);
+      console.log('[GenericAction] Received plan:', plan);
 
       if (!plan.feasible) {
+        console.warn('[GenericAction] Plan not feasible:', plan.reasoning);
         return ActionResult.error(`Cannot execute: ${plan.reasoning}`);
       }
 
       // Step 2: Format plan for user confirmation
       const planDescription = this.formatPlan(plan);
+      console.log('[GenericAction] Formatted plan for display');
 
       // Step 3: Show confirmation
+      console.log('[GenericAction] Showing confirmation overlay...');
       const confirmation = await this.confirmationOverlay.show({
         action: 'Execute Action on Page',
         content: planDescription,
@@ -55,16 +62,19 @@ class GenericAction extends BaseAction {
         warning: plan.warnings.length > 0 ? plan.warnings.join('\n') :
                  'This action will interact with the page. Review the steps carefully.'
       });
+      console.log('[GenericAction] User decision:', confirmation.approved ? 'approved' : 'cancelled');
 
       // Step 4: If approved, execute
       if (confirmation.approved) {
+        console.log('[GenericAction] Executing action plan...');
         return await this.provider.executeAction(plan);
       } else {
         return ActionResult.error('Action cancelled by user');
       }
 
     } catch (error) {
-      console.error('Error in generic action:', error);
+      console.error('[GenericAction] Error in generic action:', error);
+      console.error('[GenericAction] Error stack:', error.stack);
       return ActionResult.error(`Action failed: ${error.message}`);
     }
   }

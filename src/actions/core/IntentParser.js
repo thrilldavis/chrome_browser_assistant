@@ -24,6 +24,10 @@ class IntentParser {
       forward: [
         /^forward\s+(this\s+)?email/i,
         /^fwd\s+(this\s+)?email/i
+      ],
+      write: [
+        // Simple pattern: any command containing "document", "doc", or "sheet"
+        /\b(document|doc|sheet)\b/i
       ]
     };
   }
@@ -38,7 +42,7 @@ class IntentParser {
     const trimmedInput = userInput.trim();
 
     // Try pattern matching first (fast)
-    const patternMatch = this.matchPatterns(trimmedInput);
+    const patternMatch = this.matchPatterns(trimmedInput, pageContext);
     if (patternMatch) {
       return {
         action: patternMatch.action,
@@ -67,9 +71,10 @@ class IntentParser {
   /**
    * Match input against known patterns
    * @param {string} input - User input
+   * @param {Object} pageContext - Current page context
    * @returns {Object|null}
    */
-  matchPatterns(input) {
+  matchPatterns(input, pageContext = {}) {
     for (const [action, patterns] of Object.entries(this.patterns)) {
       for (const pattern of patterns) {
         if (pattern.test(input)) {

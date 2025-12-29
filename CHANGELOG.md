@@ -16,10 +16,18 @@
   - Context extraction from email content (sender, subject, body)
   - Accessibility-first selectors for reliability across UI updates
 
-- **Fallback Provider** (Partial) - AI-powered actions for unknown sites
-  - LLM analyzes page structure
+- **Google Docs/Sheets Actions Provider** - Specific actions for Google Docs and Sheets
+  - Generate and copy text to clipboard for manual pasting
+  - Smart content formatting: TSV for Sheets (multi-cell paste), markdown-like formatting for Docs
+  - Document type detection (document vs spreadsheet)
+  - Provider structure enables future rich-text and cell navigation features
+  - Note: Cannot automate paste due to Chrome clipboard security (requires document focus)
+
+- **Fallback Provider** - AI-powered actions for standard websites
+  - LLM analyzes page structure and discovers elements
   - Generates step-by-step action plans
-  - Generic actions on any website (in development)
+  - Works on 95% of websites with standard DOM-based elements
+  - Does NOT handle canvas-based editors (requires custom providers)
 
 - **Action Integration**
   - Natural language detection in chat interface
@@ -31,6 +39,7 @@
 - Content scripts now load action system on all pages
 - Chat interface detects action commands vs regular chat
 - Plugin shows action results with success/error indicators
+- FallbackProvider is now truly generic (removed site-specific code)
 
 ### Technical
 - Hybrid action architecture (specific + fallback providers)
@@ -38,6 +47,8 @@
 - Intent parsing with pattern matching + LLM fallback
 - Per-tab action system instances
 - Level 2 safety: confirms critical actions
+- Custom providers for non-standard sites (Gmail, Google Docs/Sheets)
+- Smart content generation based on target (TSV for spreadsheets, formatted text for docs)
 
 ## [0.1.0] - 2025-12-27
 

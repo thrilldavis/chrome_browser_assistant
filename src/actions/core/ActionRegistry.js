@@ -24,6 +24,11 @@ class ActionRegistry {
       await this.registerGmailProvider();
     }
 
+    // Register Google Docs provider
+    if (window.location.hostname.includes('docs.google.com')) {
+      await this.registerGoogleDocsProvider();
+    }
+
     // Always register fallback provider for generic actions
     await this.registerFallbackProvider();
 
@@ -50,6 +55,26 @@ class ActionRegistry {
       this.actions.set('compose', composeAction);
 
       console.log('Gmail provider and actions registered');
+    }
+  }
+
+  /**
+   * Register Google Docs provider and its actions
+   */
+  async registerGoogleDocsProvider() {
+    const googleDocsProvider = new GoogleDocsProvider();
+
+    if (googleDocsProvider.canHandle()) {
+      console.log('Registering Google Docs provider');
+
+      this.providers.set('googledocs', googleDocsProvider);
+
+      // Register Google Docs actions
+      const writeTextAction = new WriteTextAction(googleDocsProvider);
+
+      this.actions.set('write', writeTextAction);
+
+      console.log('Google Docs provider and actions registered');
     }
   }
 

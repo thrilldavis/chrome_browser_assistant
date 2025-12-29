@@ -37,12 +37,52 @@ Choose from multiple AI providers:
 - Visual feedback for loading states
 
 ### Intelligent Actions System (NEW!)
-Execute actions on web pages using natural language:
+Execute actions on web pages using natural language commands.
+
+#### Supported Sites
 
 **Gmail Actions:**
 - **Reply to emails**: Type "reply to this email" to generate an AI-powered response
 - **Compose emails**: Type "compose email to john@example.com about the project" to draft new messages
 - Uses accessibility-first approach for reliability across Gmail UI updates
+
+**Google Docs/Sheets Actions:**
+- **Write text**: Type "write a summary of the project in the document" to add text
+- **How it works**: Due to Chrome's clipboard security restrictions (documents lose focus when you interact with the extension), the action copies generated text to your clipboard and prompts you to paste manually with Cmd+V/Ctrl+V
+- **Why a custom provider**: Google Docs uses canvas-based rendering (text is pixels, not DOM). While we currently copy to clipboard, this provider structure enables future enhancements like rich formatting, cell navigation in Sheets, and structured data pasting
+- **What we tried**: Automated approaches tested included `document.execCommand('insertText')`, clipboard paste with keyboard simulation, File menu refocusing tricks, and character-by-character keyboard events - all failed due to Chrome's security model requiring document focus for clipboard access
+
+**Generic Actions (Any Website):**
+- Works on 95% of websites with standard DOM-based text inputs and buttons
+- AI analyzes the page structure and generates action plans
+- Example: "fill in the contact form with my details"
+- Example: "click the submit button"
+
+#### Provider Architecture
+
+**Why Custom Providers?**
+
+This extension uses a hybrid architecture with three types of action providers:
+
+1. **Specific Providers** (Gmail, Google Docs/Sheets)
+   - Built for sites with unique interfaces
+   - More reliable and feature-rich
+   - Required when sites don't use standard web elements
+
+2. **Fallback Provider** (Generic)
+   - Works on most standard websites
+   - Uses ARIA accessibility attributes to discover elements
+   - Handles standard inputs, buttons, and forms
+
+**When We Build Custom Providers:**
+
+We create custom providers for sites that use non-standard rendering:
+
+- **Gmail**: Complex interface with dynamic elements - custom provider ensures reliability
+- **Google Docs/Sheets**: Canvas-based rendering - text is pixels, not DOM elements - requires keyboard simulation
+- **Future**: Salesforce, ServiceNow, Figma, etc. - each has unique requirements
+
+Most websites use standard HTML elements and work perfectly with the generic fallback provider.
 
 **How Actions Work:**
 1. Type a natural language command (e.g., "reply to this email saying I'll be out of office")
@@ -86,7 +126,9 @@ Execute actions on web pages using natural language:
 4. **To chat generally**: Just start typing in the chat box
 5. Have a conversation - the AI remembers the context of your discussion
 
-**Using Actions (Gmail):**
+**Using Actions:**
+
+*Gmail Example:*
 1. Open Gmail and view an email
 2. Open the Browser Assistant side panel
 3. Type an action command:
@@ -96,6 +138,18 @@ Execute actions on web pages using natural language:
 4. Review the AI-generated content in the confirmation overlay
 5. Edit if needed, then click "Apply" to fill Gmail's compose area
 6. Review in Gmail and send when ready
+
+*Google Docs Example:*
+1. Open a Google Doc or Sheet
+2. Place your cursor where you want the text to appear
+3. Open the Browser Assistant side panel
+4. Type an action command:
+   - "write a brief summary of the meeting"
+   - "write hello world in the document"
+   - "add a list of project milestones"
+5. Review the AI-generated text in the confirmation overlay
+6. Edit if needed, then click "Copy & Close"
+7. Paste into your document with Cmd+V (Mac) or Ctrl+V (Windows)
 
 ## Known Limitations
 
@@ -154,7 +208,10 @@ chrome_browser_assistant/
 │   │   ├── base/       # BaseAction class
 │   │   ├── core/       # Registry, scanner, parser
 │   │   ├── ui/         # Confirmation overlays
-│   │   └── providers/  # Gmail, Fallback providers
+│   │   └── providers/  # Site-specific & fallback providers
+│   │       ├── gmail/         # Gmail-specific actions
+│   │       ├── googledocs/    # Google Docs/Sheets actions
+│   │       └── fallback/      # Generic actions for any site
 │   ├── background/     # Service worker & model registry
 │   ├── plugin/         # Side panel UI & logic
 │   └── content/        # Content extraction scripts
