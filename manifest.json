@@ -30,6 +30,9 @@
   "content_scripts": [{
     "matches": ["<all_urls>"],
     "js": [
+      "libs/pdf.min.js",
+      "src/content/pdf-extractor.js",
+      "src/content/google-workspace-extractor.js",
       "src/content/content.js",
       "src/actions/base/BaseAction.js",
       "src/actions/core/AccessibilityScanner.js",
@@ -45,5 +48,9 @@
       "src/actions/core/ActionRegistry.js",
       "src/actions/actions-loader.js"
     ]
+  }],
+  "web_accessible_resources": [{
+    "resources": ["libs/pdf.worker.min.js"],
+    "matches": ["<all_urls>"]
   }]
 }

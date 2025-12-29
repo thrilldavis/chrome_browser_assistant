@@ -7,6 +7,8 @@ A Chrome browser extension that lets you chat with AI about web pages and get in
 Browser Assistant adds an AI-powered side panel to Chrome that can:
 
 - **Summarize web pages** - Extract and summarize the main content from any webpage using intelligent content parsing (powered by Readability.js)
+- **Summarize PDFs** - Automatically extract and summarize text from PDF documents (powered by PDF.js)
+- **Summarize Google Workspace documents** - Extract content from Google Docs, Sheets, and Slides for summarization
 - **Chat about pages** - Have multi-turn conversations with AI about the current page's content
 - **Execute actions** - Perform actions on web pages with natural language commands (reply to emails, compose messages, and more)
 - **General chat** - Use it as a general AI assistant even without page context
@@ -166,6 +168,21 @@ The extension cannot access content from certain Chrome system pages:
 
 **Workaround**: The extension works perfectly on regular websites (news sites, blogs, documentation, articles, etc.)
 
+### PDF Files
+- **PDF summarization supported**: The extension uses PDF.js to extract text from PDF documents
+- **How it works**: When you open a PDF and click "Summarize", the extension automatically extracts all text from the PDF and generates a summary
+- **Note**: Large PDFs may take a few seconds to extract
+
+### Google Workspace Documents
+- **Google Docs, Sheets, and Slides supported**: The extension can extract content from Google Workspace documents
+- **How it works**:
+  - **Google Docs**: Extracts from internal `DOCS_modelChunk` data structure (full document text)
+  - **Google Sheets**: Extracts visible cell content from grid container
+  - **Google Slides**: Extracts text from slide viewer and thumbnails
+- **Note**:
+  - Google Docs extraction is reliable and gets the full document content
+  - Sheets and Slides extract visible content only (may need scrolling for large documents)
+
 ### API Requirements
 - **LM Studio**: Requires LM Studio running locally with a loaded model
 - **Claude/OpenAI**: Requires valid API keys and may incur usage costs
@@ -183,7 +200,6 @@ The extension cannot access content from certain Chrome system pages:
 
 #### Enhanced Understanding
 - **Multi-page context**: Summarize and remember content across multiple tabs
-- **PDF support**: Summarize PDF documents in addition to web pages
 - **Screenshot analysis**: Understand and describe images and screenshots
 - **Video transcription**: Get summaries of YouTube videos and other video content
 

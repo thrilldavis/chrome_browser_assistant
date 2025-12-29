@@ -41,6 +41,21 @@
 - Plugin shows action results with success/error indicators
 - FallbackProvider is now truly generic (removed site-specific code)
 
+### Added (continued)
+- **PDF Support**: Full text extraction and summarization for PDF documents
+  - Uses PDF.js library to extract text from all pages
+  - Works with both direct PDF URLs and embedded PDFs
+  - Automatically detects PDFs and extracts content
+  - Includes page count and metadata extraction
+
+- **Google Workspace Support**: Extract and summarize content from Google Docs, Sheets, and Slides
+  - **Google Docs**: Extracts from `DOCS_modelChunk` internal data structure for full document content
+  - **Google Sheets**: Extracts visible cell content and sheet names from grid container
+  - **Google Slides**: Extracts text from slide viewer, thumbnails, and speaker notes
+  - Custom extractor handles canvas-based rendering by accessing internal data models
+  - Automatic detection and extraction for all three document types
+  - Works reliably despite canvas-based rendering (doesn't rely on DOM text)
+
 ### Technical
 - Hybrid action architecture (specific + fallback providers)
 - ARIA-based element discovery for robustness

@@ -439,13 +439,27 @@ async function getPageContent() {
     const response = await chrome.tabs.sendMessage(tab.id, { action: 'get_page_text' });
     console.log(`get_page_text response:`, response);
 
+    // Check if this is a PDF with an error
+    if (response && response.isPDF && response.error) {
+      console.error('PDF extraction failed:', response.error);
+      return null;
+    }
+
     // Return null if no content available
     if (!response || !response.text || response.text.trim().length === 0) {
       console.warn('No text content in response');
       return null;
     }
 
-    console.log(`Received ${response.text.length} characters of content`);
+    // For PDFs, note the page count
+    if (response.isPDF) {
+      console.log(`Received PDF with ${response.pageCount} pages, ${response.text.length} characters of content`);
+    } else if (response.isGoogleWorkspace) {
+      console.log(`Received Google ${response.workspaceType} with ${response.text.length} characters of content`);
+    } else {
+      console.log(`Received ${response.text.length} characters of content`);
+    }
+
     return response.text;
   } catch (error) {
     console.error('Error retrieving page content:', error);
