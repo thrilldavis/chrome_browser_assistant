@@ -439,13 +439,27 @@ async function getPageContent() {
     const response = await chrome.tabs.sendMessage(tab.id, { action: 'get_page_text' });
     console.log(`get_page_text response:`, response);
 
+    // Check if this is a PDF with an error
+    if (response && response.isPDF && response.error) {
+      console.error('PDF extraction failed:', response.error);
+      return null;
+    }
+
     // Return null if no content available
     if (!response || !response.text || response.text.trim().length === 0) {
       console.warn('No text content in response');
       return null;
     }
 
-    console.log(`Received ${response.text.length} characters of content`);
+    // For PDFs, note the page count
+    if (response.isPDF) {
+      console.log(`Received PDF with ${response.pageCount} pages, ${response.text.length} characters of content`);
+    } else if (response.isGoogleWorkspace) {
+      console.log(`Received Google ${response.workspaceType} with ${response.text.length} characters of content`);
+    } else {
+      console.log(`Received ${response.text.length} characters of content`);
+    }
+
     return response.text;
   } catch (error) {
     console.error('Error retrieving page content:', error);
@@ -671,6 +685,47 @@ document.addEventListener('DOMContentLoaded', async () => {
       promptField.value = '';
       setChatDisabled(true);
       setChatLoading(true);
+
+      // Check if this is an action command
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const isActionResponse = await chrome.tabs.sendMessage(tab.id, {
+          action: 'is_action_command',
+          input: userPrompt
+        });
+
+        if (isActionResponse && isActionResponse.isAction) {
+          console.log('Detected action command, routing to action system');
+
+          // Execute action in content script
+          const actionResponse = await chrome.tabs.sendMessage(tab.id, {
+            action: 'execute_action',
+            command: userPrompt
+          });
+
+          // Add action result to chatbox
+          const actionMessageDiv = document.createElement('div');
+          actionMessageDiv.className = 'chat-message ai-message';
+
+          if (actionResponse.success) {
+            actionMessageDiv.textContent = `✓ ${actionResponse.message}`;
+          } else {
+            actionMessageDiv.textContent = `✗ ${actionResponse.error || 'Action failed'}`;
+          }
+
+          chatBox.appendChild(actionMessageDiv);
+          chatBox.scrollTop = chatBox.scrollHeight;
+
+          // Re-enable chat
+          setChatLoading(false);
+          setChatDisabled(false);
+          promptField.focus();
+          return; // Don't proceed to regular chat
+        }
+      } catch (error) {
+        console.log('Action check failed, proceeding as regular chat:', error);
+        // If action check fails, proceed with regular chat
+      }
 
       // Build system prompt and user prompt based on available context
       let systemPrompt, chatUserPrompt;

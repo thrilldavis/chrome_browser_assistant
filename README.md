@@ -7,7 +7,10 @@ A Chrome browser extension that lets you chat with AI about web pages and get in
 Browser Assistant adds an AI-powered side panel to Chrome that can:
 
 - **Summarize web pages** - Extract and summarize the main content from any webpage using intelligent content parsing (powered by Readability.js)
+- **Summarize PDFs** - Automatically extract and summarize text from PDF documents (powered by PDF.js)
+- **Summarize Google Workspace documents** - Extract content from Google Docs, Sheets, and Slides for summarization
 - **Chat about pages** - Have multi-turn conversations with AI about the current page's content
+- **Execute actions** - Perform actions on web pages with natural language commands (reply to emails, compose messages, and more)
 - **General chat** - Use it as a general AI assistant even without page context
 - **Switch models on the fly** - Change between different AI models without losing your conversation history
 
@@ -35,6 +38,67 @@ Choose from multiple AI providers:
 - Current page indicator shows which page you're chatting about
 - Visual feedback for loading states
 
+### Intelligent Actions System (NEW!)
+Execute actions on web pages using natural language commands.
+
+#### Supported Sites
+
+**Gmail Actions:**
+- **Reply to emails**: Type "reply to this email" to generate an AI-powered response
+- **Compose emails**: Type "compose email to john@example.com about the project" to draft new messages
+- Uses accessibility-first approach for reliability across Gmail UI updates
+
+**Google Docs/Sheets Actions:**
+- **Write text**: Type "write a summary of the project in the document" to add text
+- **How it works**: Due to Chrome's clipboard security restrictions (documents lose focus when you interact with the extension), the action copies generated text to your clipboard and prompts you to paste manually with Cmd+V/Ctrl+V
+- **Why a custom provider**: Google Docs uses canvas-based rendering (text is pixels, not DOM). While we currently copy to clipboard, this provider structure enables future enhancements like rich formatting, cell navigation in Sheets, and structured data pasting
+- **What we tried**: Automated approaches tested included `document.execCommand('insertText')`, clipboard paste with keyboard simulation, File menu refocusing tricks, and character-by-character keyboard events - all failed due to Chrome's security model requiring document focus for clipboard access
+
+**Generic Actions (Any Website):**
+- Works on 95% of websites with standard DOM-based text inputs and buttons
+- AI analyzes the page structure and generates action plans
+- Example: "fill in the contact form with my details"
+- Example: "click the submit button"
+
+#### Provider Architecture
+
+**Why Custom Providers?**
+
+This extension uses a hybrid architecture with three types of action providers:
+
+1. **Specific Providers** (Gmail, Google Docs/Sheets)
+   - Built for sites with unique interfaces
+   - More reliable and feature-rich
+   - Required when sites don't use standard web elements
+
+2. **Fallback Provider** (Generic)
+   - Works on most standard websites
+   - Uses ARIA accessibility attributes to discover elements
+   - Handles standard inputs, buttons, and forms
+
+**When We Build Custom Providers:**
+
+We create custom providers for sites that use non-standard rendering:
+
+- **Gmail**: Complex interface with dynamic elements - custom provider ensures reliability
+- **Google Docs/Sheets**: Canvas-based rendering - text is pixels, not DOM elements - requires keyboard simulation
+- **Future**: Salesforce, ServiceNow, Figma, etc. - each has unique requirements
+
+Most websites use standard HTML elements and work perfectly with the generic fallback provider.
+
+**How Actions Work:**
+1. Type a natural language command (e.g., "reply to this email saying I'll be out of office")
+2. AI analyzes your intent and the page context
+3. Generates appropriate content
+4. Shows you a confirmation overlay with editable preview
+5. Executes the action only after your approval
+
+**Safety Features:**
+- Always shows confirmation before executing
+- Never auto-sends emails - only fills compose areas
+- All generated content is editable before applying
+- Uses ARIA accessibility attributes for robust, reliable interactions
+
 ## Installation
 
 1. Clone or download this repository
@@ -57,11 +121,37 @@ Choose from multiple AI providers:
 
 ### Using the Extension
 
+**Basic Usage:**
 1. Navigate to any webpage
 2. Click the extension icon to open the side panel
 3. **To chat about the page**: Click "Summarize" first to give the AI context about the page
 4. **To chat generally**: Just start typing in the chat box
 5. Have a conversation - the AI remembers the context of your discussion
+
+**Using Actions:**
+
+*Gmail Example:*
+1. Open Gmail and view an email
+2. Open the Browser Assistant side panel
+3. Type an action command:
+   - "reply to this email"
+   - "reply saying I'll be out of office next week"
+   - "compose email to john@example.com about the project update"
+4. Review the AI-generated content in the confirmation overlay
+5. Edit if needed, then click "Apply" to fill Gmail's compose area
+6. Review in Gmail and send when ready
+
+*Google Docs Example:*
+1. Open a Google Doc or Sheet
+2. Place your cursor where you want the text to appear
+3. Open the Browser Assistant side panel
+4. Type an action command:
+   - "write a brief summary of the meeting"
+   - "write hello world in the document"
+   - "add a list of project milestones"
+5. Review the AI-generated text in the confirmation overlay
+6. Edit if needed, then click "Copy & Close"
+7. Paste into your document with Cmd+V (Mac) or Ctrl+V (Windows)
 
 ## Known Limitations
 
@@ -78,6 +168,21 @@ The extension cannot access content from certain Chrome system pages:
 
 **Workaround**: The extension works perfectly on regular websites (news sites, blogs, documentation, articles, etc.)
 
+### PDF Files
+- **PDF summarization supported**: The extension uses PDF.js to extract text from PDF documents
+- **How it works**: When you open a PDF and click "Summarize", the extension automatically extracts all text from the PDF and generates a summary
+- **Note**: Large PDFs may take a few seconds to extract
+
+### Google Workspace Documents
+- **Google Docs, Sheets, and Slides supported**: The extension can extract content from Google Workspace documents
+- **How it works**:
+  - **Google Docs**: Extracts from internal `DOCS_modelChunk` data structure (full document text)
+  - **Google Sheets**: Extracts visible cell content from grid container
+  - **Google Slides**: Extracts text from slide viewer and thumbnails
+- **Note**:
+  - Google Docs extraction is reliable and gets the full document content
+  - Sheets and Slides extract visible content only (may need scrolling for large documents)
+
 ### API Requirements
 - **LM Studio**: Requires LM Studio running locally with a loaded model
 - **Claude/OpenAI**: Requires valid API keys and may incur usage costs
@@ -86,15 +191,15 @@ The extension cannot access content from certain Chrome system pages:
 
 ### Planned Features
 
-#### Interactive Actions
-- **Click elements**: "Click the login button"
-- **Fill forms**: "Fill out this form with my information"
-- **Navigate pages**: "Go to the next page" or "Scroll to the comments"
-- **Extract data**: "Get all the links from this page"
+#### Expanded Actions
+- **Salesforce integration**: Add notes, update opportunities, create tasks
+- **ServiceNow integration**: Update incidents, add comments, resolve tickets
+- **Dynamic actions**: AI-powered actions on any website (partially implemented)
+- **Form automation**: Fill complex forms with AI assistance
+- **Data extraction**: Extract and format data from tables and lists
 
 #### Enhanced Understanding
 - **Multi-page context**: Summarize and remember content across multiple tabs
-- **PDF support**: Summarize PDF documents in addition to web pages
 - **Screenshot analysis**: Understand and describe images and screenshots
 - **Video transcription**: Get summaries of YouTube videos and other video content
 
@@ -115,6 +220,14 @@ The extension cannot access content from certain Chrome system pages:
 ```
 chrome_browser_assistant/
 ├── src/
+│   ├── actions/        # Action system (NEW!)
+│   │   ├── base/       # BaseAction class
+│   │   ├── core/       # Registry, scanner, parser
+│   │   ├── ui/         # Confirmation overlays
+│   │   └── providers/  # Site-specific & fallback providers
+│   │       ├── gmail/         # Gmail-specific actions
+│   │       ├── googledocs/    # Google Docs/Sheets actions
+│   │       └── fallback/      # Generic actions for any site
 │   ├── background/     # Service worker & model registry
 │   ├── plugin/         # Side panel UI & logic
 │   └── content/        # Content extraction scripts

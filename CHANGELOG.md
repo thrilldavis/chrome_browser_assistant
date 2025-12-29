@@ -1,5 +1,70 @@
 # Changelog
 
+## [Unreleased] - Actions System
+
+### Added
+- **Intelligent Actions System** - Execute actions on web pages using natural language
+  - BaseAction framework for extensible action providers
+  - IntentParser for natural language command understanding
+  - AccessibilityScanner for robust element discovery using ARIA attributes
+  - ConfirmationOverlay for safe action previews with user approval
+  - ActionRegistry for coordinating providers and actions
+
+- **Gmail Actions Provider** - Specific actions for Gmail
+  - Reply to emails with AI-generated responses
+  - Compose new emails with AI assistance
+  - Context extraction from email content (sender, subject, body)
+  - Accessibility-first selectors for reliability across UI updates
+
+- **Google Docs/Sheets Actions Provider** - Specific actions for Google Docs and Sheets
+  - Generate and copy text to clipboard for manual pasting
+  - Smart content formatting: TSV for Sheets (multi-cell paste), markdown-like formatting for Docs
+  - Document type detection (document vs spreadsheet)
+  - Provider structure enables future rich-text and cell navigation features
+  - Note: Cannot automate paste due to Chrome clipboard security (requires document focus)
+
+- **Fallback Provider** - AI-powered actions for standard websites
+  - LLM analyzes page structure and discovers elements
+  - Generates step-by-step action plans
+  - Works on 95% of websites with standard DOM-based elements
+  - Does NOT handle canvas-based editors (requires custom providers)
+
+- **Action Integration**
+  - Natural language detection in chat interface
+  - Automatic routing between chat and actions
+  - Inline confirmation UI with editable previews
+  - Safety: never auto-sends, always confirms
+
+### Changed
+- Content scripts now load action system on all pages
+- Chat interface detects action commands vs regular chat
+- Plugin shows action results with success/error indicators
+- FallbackProvider is now truly generic (removed site-specific code)
+
+### Added (continued)
+- **PDF Support**: Full text extraction and summarization for PDF documents
+  - Uses PDF.js library to extract text from all pages
+  - Works with both direct PDF URLs and embedded PDFs
+  - Automatically detects PDFs and extracts content
+  - Includes page count and metadata extraction
+
+- **Google Workspace Support**: Extract and summarize content from Google Docs, Sheets, and Slides
+  - **Google Docs**: Extracts from `DOCS_modelChunk` internal data structure for full document content
+  - **Google Sheets**: Extracts visible cell content and sheet names from grid container
+  - **Google Slides**: Extracts text from slide viewer, thumbnails, and speaker notes
+  - Custom extractor handles canvas-based rendering by accessing internal data models
+  - Automatic detection and extraction for all three document types
+  - Works reliably despite canvas-based rendering (doesn't rely on DOM text)
+
+### Technical
+- Hybrid action architecture (specific + fallback providers)
+- ARIA-based element discovery for robustness
+- Intent parsing with pattern matching + LLM fallback
+- Per-tab action system instances
+- Level 2 safety: confirms critical actions
+- Custom providers for non-standard sites (Gmail, Google Docs/Sheets)
+- Smart content generation based on target (TSV for spreadsheets, formatted text for docs)
+
 ## [0.1.0] - 2025-12-27
 
 ### Added
