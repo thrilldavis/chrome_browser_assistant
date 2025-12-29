@@ -9,17 +9,17 @@ class IntentParser {
     // Action patterns for quick pattern matching
     this.patterns = {
       reply: [
-        /^reply\s+(to\s+)?(this\s+)?email/i,
-        /^respond\s+(to\s+)?(this\s+)?email/i,
-        /^answer\s+(this\s+)?email/i,
-        /^write\s+a?\s*reply/i
+        /\breply\s+(to\s+)?(this\s+)?email/i,
+        /\brespond\s+(to\s+)?(this\s+)?email/i,
+        /\banswer\s+(this\s+)?email/i,
+        /\bwrite\s+a?\s*reply/i
       ],
       compose: [
-        /^compose\s+(an?\s+)?email/i,
-        /^write\s+(an?\s+)?email/i,
-        /^draft\s+(an?\s+)?email/i,
-        /^send\s+(an?\s+)?email/i,
-        /^email\s+/i
+        /\bcompose\s+(an?\s+)?email/i,
+        /\bwrite\s+(an?\s+)?email/i,
+        /\bdraft\s+(an?\s+)?email/i,
+        /\bsend\s+(an?\s+)?email/i,
+        /\bemail\s+/i
       ],
       forward: [
         /^forward\s+(this\s+)?email/i,
