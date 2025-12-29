@@ -70,14 +70,13 @@ Output ONLY the content that should be written, with no additional formatting or
 The user wants to: "${userCommand}"
 
 Generate the appropriate text content for this request.
-- Use markdown formatting where appropriate (bold, italic, lists, etc.)
-- When pasted, Google Docs will preserve basic markdown-like formatting
+- Output plain text only - NO markdown formatting (no **, no *, no #, no backticks)
+- For lists, use bullet points (•) or numbers (1., 2., etc.)
+- For emphasis, use CAPITALIZATION or natural language emphasis
+- Keep formatting simple since this will be pasted as plain text
 - Output ONLY the text that should be written, with no additional explanation
 
-Examples:
-- For bold: **important text**
-- For lists: Use bullet points (•) or numbers (1., 2., etc.)
-- For emphasis: Use ALL CAPS or *italics*`;
+Important: Do NOT use markdown syntax like **bold** or *italic* - write plain text only.`;
         }
 
         const userPrompt = `Generate content for: "${userCommand}"`;
