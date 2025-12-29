@@ -28,6 +28,11 @@ yarn-error.log*
 .env
 .env.local
 
+# Local-only files (proprietary/personal data)
+*.local.js
+*-local.js
+config.local.js
+
 # Logs
 logs/
 *.log

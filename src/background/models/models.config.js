@@ -11,3 +11,10 @@ const MODEL_PROVIDERS = [
   { scriptPath: 'models/ClaudeModel.js', className: 'ClaudeModel' },
   { scriptPath: 'models/OpenAIModel.js', className: 'OpenAIModel' }
 ];
+
+// Local model providers (*.local.js files are gitignored)
+// Add your proprietary/personal model providers here
+const LOCAL_MODEL_PROVIDERS = [
+  { scriptPath: 'models/ProprietaryModel.local.js', className: 'ProprietaryModel' }
+  // Add more local providers as needed
+];

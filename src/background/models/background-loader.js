@@ -14,21 +14,40 @@ function loadAllModelProvidersForBackground() {
     throw new Error('MODEL_PROVIDERS not defined. Ensure models.config.js is loaded first.');
   }
 
-  console.log(`Background: Loading ${MODEL_PROVIDERS.length} model providers...`);
+  // Combine standard and local providers
+  const localProviders = (typeof LOCAL_MODEL_PROVIDERS !== 'undefined') ? LOCAL_MODEL_PROVIDERS : [];
+  const allProviders = [...MODEL_PROVIDERS, ...localProviders];
+
+  console.log(`Background: Loading ${allProviders.length} model providers (${MODEL_PROVIDERS.length} standard, ${localProviders.length} local)...`);
 
   // Collect all script paths
   const scriptPaths = ['models/BaseModel.js'];
 
-  for (const provider of MODEL_PROVIDERS) {
+  for (const provider of allProviders) {
     scriptPaths.push(provider.scriptPath);
   }
 
   console.log('Background: Importing scripts:', scriptPaths);
 
   // Load all scripts synchronously using importScripts
-  importScripts(...scriptPaths);
+  // Local scripts that don't exist will fail silently (caught in try-catch in caller)
+  try {
+    importScripts(...scriptPaths);
+  } catch (error) {
+    // If a local model file doesn't exist, that's OK - just log it
+    console.warn('Background: Some model scripts failed to load (this is OK for optional local models):', error.message);
 
-  console.log('Background: All model provider scripts loaded');
+    // Try loading scripts one by one to identify which ones failed
+    scriptPaths.forEach(path => {
+      try {
+        importScripts(path);
+      } catch (e) {
+        console.warn(`Background: Failed to load ${path}:`, e.message);
+      }
+    });
+  }
+
+  console.log('Background: Model provider scripts loaded');
   console.log('Background: Checking if BaseModel is available:', typeof BaseModel !== 'undefined');
   console.log('Background: Checking if LMStudioModel is available:', typeof LMStudioModel !== 'undefined');
   console.log('Background: Checking if ClaudeModel is available:', typeof ClaudeModel !== 'undefined');
@@ -44,13 +63,17 @@ function registerAllModelProviders() {
     throw new Error('MODEL_PROVIDERS not defined.');
   }
 
+  // Combine standard and local providers
+  const localProviders = (typeof LOCAL_MODEL_PROVIDERS !== 'undefined') ? LOCAL_MODEL_PROVIDERS : [];
+  const allProviders = [...MODEL_PROVIDERS, ...localProviders];
+
   console.log('Background: Registering model providers...');
 
   // Access the global registry that models registered themselves into
   const classRegistry = self.MODEL_CLASS_REGISTRY || {};
   console.log('Background: Available classes in registry:', Object.keys(classRegistry));
 
-  for (const provider of MODEL_PROVIDERS) {
+  for (const provider of allProviders) {
     try {
       // Get the class from the registry
       const ModelClass = classRegistry[provider.className];
