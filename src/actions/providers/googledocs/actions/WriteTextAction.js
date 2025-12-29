@@ -69,14 +69,27 @@ Output ONLY the content that should be written, with no additional formatting or
           systemPrompt = `You are helping write content in a Google Doc.
 The user wants to: "${userCommand}"
 
-Generate the appropriate text content for this request.
-- Output plain text only - NO markdown formatting (no **, no *, no #, no backticks)
-- For lists, use bullet points (•) or numbers (1., 2., etc.)
-- For emphasis, use CAPITALIZATION or natural language emphasis
-- Keep formatting simple since this will be pasted as plain text
-- Output ONLY the text that should be written, with no additional explanation
+Generate the content as HTML that will be copied to clipboard and pasted into Google Docs.
+Google Docs will convert the HTML to rich formatting automatically.
 
-Important: Do NOT use markdown syntax like **bold** or *italic* - write plain text only.`;
+Use these HTML tags for formatting:
+- <h1>, <h2>, <h3> for headings
+- <strong> or <b> for bold text
+- <em> or <i> for italic text
+- <ul><li> for bullet lists
+- <ol><li> for numbered lists
+- <p> for paragraphs
+- <br> for line breaks
+
+Example output:
+<h1>Main Title</h1>
+<p>This is a paragraph with <strong>bold text</strong> and <em>italic text</em>.</p>
+<ul>
+<li>First bullet point</li>
+<li>Second bullet point</li>
+</ul>
+
+Output ONLY the HTML content, no explanation or surrounding text.`;
         }
 
         const userPrompt = `Generate content for: "${userCommand}"`;
@@ -110,11 +123,28 @@ Important: Do NOT use markdown syntax like **bold** or *italic* - write plain te
 
       const finalText = confirmation.content || textToWrite;
 
-      // Write to clipboard - this works because the confirmation overlay can still access clipboard
+      // Write to clipboard with HTML support for rich formatting
       try {
-        await navigator.clipboard.writeText(finalText);
-        console.log('[WriteTextAction] Text copied to clipboard');
-        return ActionResult.success(`Text copied to clipboard! Press Cmd+V (Mac) or Ctrl+V (Windows) to paste it into your document.`);
+        // For Google Docs, write both HTML and plain text to clipboard
+        // Google Docs will use the HTML version for rich formatting
+        if (context.documentType === 'document') {
+          const blob = new Blob([finalText], { type: 'text/html' });
+          const plainBlob = new Blob([finalText.replace(/<[^>]*>/g, '')], { type: 'text/plain' });
+
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': blob,
+              'text/plain': plainBlob
+            })
+          ]);
+          console.log('[WriteTextAction] HTML copied to clipboard for rich formatting');
+        } else {
+          // For Sheets, use plain text (TSV)
+          await navigator.clipboard.writeText(finalText);
+          console.log('[WriteTextAction] Text copied to clipboard');
+        }
+
+        return ActionResult.success(`Content copied to clipboard! Press Cmd+V (Mac) or Ctrl+V (Windows) to paste it into your document.`);
       } catch (clipboardError) {
         console.error('[WriteTextAction] Clipboard write failed:', clipboardError);
         return ActionResult.error(`Could not copy to clipboard. Please manually copy the text from the confirmation dialog.`);

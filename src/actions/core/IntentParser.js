@@ -26,8 +26,10 @@ class IntentParser {
         /^fwd\s+(this\s+)?email/i
       ],
       write: [
-        // Simple pattern: any command containing "document", "doc", or "sheet"
-        /\b(document|doc|sheet)\b/i
+        // Pattern: commands about writing in documents/sheets
+        /\b(write|add|insert|put|create|generate|make)\b.*\b(document|doc|sheet|google\s+doc|google\s+sheet)\b/i,
+        /\b(document|doc|sheet|google\s+doc|google\s+sheet)\b.*\b(write|add|insert|put|create|generate|make)\b/i,
+        /\bin\s+(the\s+)?(document|doc|sheet)\b/i
       ]
     };
   }

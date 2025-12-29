@@ -336,8 +336,17 @@ Analyze the page and create a step-by-step plan to execute this command.`;
     }
 
     if (!element) {
-      console.error(`[FallbackProvider] Could not find any suitable element for target: ${target}`);
-      throw new Error(`Could not find input with label: ${target}`);
+      console.warn(`[FallbackProvider] Could not find element for target: ${target}, copying to clipboard as fallback`);
+
+      // Copy to clipboard as fallback
+      try {
+        await navigator.clipboard.writeText(value);
+        console.log(`[FallbackProvider] Value copied to clipboard as fallback`);
+        throw new Error(`Could not find input field, but content has been copied to clipboard. Press Cmd+V (Mac) or Ctrl+V (Windows) to paste.`);
+      } catch (clipboardError) {
+        console.error(`[FallbackProvider] Clipboard fallback also failed:`, clipboardError);
+        throw new Error(`Could not find input with label: ${target}`);
+      }
     }
 
     console.log(`[FallbackProvider] Found element:`, {
