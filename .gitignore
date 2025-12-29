@@ -30,7 +30,9 @@ yarn-error.log*
 
 # Local-only files (proprietary/personal data)
 *.local.js
+*.local.md
 *-local.js
+*-local.md
 config.local.js
 
 # Logs

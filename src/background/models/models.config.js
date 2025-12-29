@@ -15,6 +15,6 @@ const MODEL_PROVIDERS = [
 // Local model providers (*.local.js files are gitignored)
 // Add your proprietary/personal model providers here
 const LOCAL_MODEL_PROVIDERS = [
-  { scriptPath: 'models/ProprietaryModel.local.js', className: 'ProprietaryModel' }
+  { scriptPath: 'models/MoveworksModel.local.js', className: 'MoveworksModel' }
   // Add more local providers as needed
 ];
