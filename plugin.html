@@ -30,29 +30,14 @@
          flex: 1 1 auto;              /* take remaining height under the topbar */
          min-height: 0;               /* allow children to shrink within */
          }
-         /* Top bar with icon and model picker (dropdown) */
+         /* Top bar with URL and model picker */
          .topbar {
          display: flex;
          align-items: center;
          justify-content: space-between;
+         gap: 12px;
          margin-bottom: 8px;
          flex: 0 0 auto;
-         }
-         .brand {
-         display: flex;
-         align-items: center;
-         gap: 8px;
-         color: #191919;
-         }
-         .brand img {
-         width: 20px;
-         height: 20px;
-         border-radius: 4px;
-         }
-         .brand-title {
-         font-size: 16px;
-         font-weight: 600;
-         margin: 0;
          }
          .model-picker {
          display: flex;
@@ -413,11 +398,10 @@
       </style>
    </head>
    <body>
-      <!-- Top bar with icon (from icons folder) and model dropdown placeholder --> 
+      <!-- Top bar with URL and model picker -->
       <div class="topbar">
-         <div class="brand">
-            <img src="icons/duck_48.png" alt="rubber duck icon">
-            <h1 class="brand-title">Browser Assistant</h1>
+         <div id="current-page-indicator" style="font-size: 11px; color: #65676b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;" title="">
+            <!-- Will be populated with current tab info -->
          </div>
          <div class="model-picker">
             <label for="model-select">Model</label>
@@ -427,10 +411,6 @@
             </select>
             <button class="configure-btn" id="configure-btn" title="Configure model">⚙️</button>
          </div>
-      </div>
-      <!-- Current Page Indicator -->
-      <div id="current-page-indicator" style="font-size: 11px; color: #65676b; padding: 4px 0; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="">
-         <!-- Will be populated with current tab info -->
       </div>
       <!-- Scroll/resize-aware content area -->
       <div class="content">
