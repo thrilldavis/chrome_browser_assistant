@@ -30,6 +30,13 @@ class IntentParser {
         /\b(write|add|insert|put|create|generate|make)\b.*\b(document|doc|sheet|google\s+doc|google\s+sheet)\b/i,
         /\b(document|doc|sheet|google\s+doc|google\s+sheet)\b.*\b(write|add|insert|put|create|generate|make)\b/i,
         /\bin\s+(the\s+)?(document|doc|sheet)\b/i
+      ],
+      summarize: [
+        /\bsummarize\b/i,
+        /\bsummary\b/i,
+        /\btl;?dr\b/i,
+        /\bwhat\s+(is|does)\s+(this|it)\s+(say|about)/i,
+        /\bgive\s+me\s+a\s+summary/i
       ]
     };
   }

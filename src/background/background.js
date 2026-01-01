@@ -138,5 +138,75 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // Keep channel open for async response
   }
 
+  if (request.action === 'get_available_actions') {
+    // Query available actions from the current tab's content script
+    (async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab || !tab.id) {
+          sendResponse({ actions: [] });
+          return;
+        }
+
+        // Retry logic for content script not ready
+        let retries = 3;
+        let delay = 100;
+
+        while (retries > 0) {
+          try {
+            // Send message to content script to get available actions
+            const response = await chrome.tabs.sendMessage(tab.id, {
+              action: 'get_available_actions'
+            });
+
+            sendResponse({ actions: response?.actions || [] });
+            return;
+          } catch (error) {
+            retries--;
+            if (retries === 0) {
+              // Content script not loaded, return empty actions
+              console.log('Content script not ready after retries, returning empty actions');
+              sendResponse({ actions: [] });
+              return;
+            }
+            // Wait before retry
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2; // Exponential backoff
+          }
+        }
+      } catch (error) {
+        console.error('Error getting available actions:', error);
+        sendResponse({ actions: [] });
+      }
+    })();
+    return true; // Keep channel open for async response
+  }
+
+  if (request.action === 'execute_action') {
+    // Execute an action in the current tab's content script
+    (async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab || !tab.id) {
+          sendResponse({ success: false, error: 'No active tab found' });
+          return;
+        }
+
+        // Send message to content script to execute the action
+        const response = await chrome.tabs.sendMessage(tab.id, {
+          action: 'execute_action',
+          actionKey: request.actionKey,
+          userInput: request.userInput || ''
+        });
+
+        sendResponse(response);
+      } catch (error) {
+        console.error('Error executing action:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    })();
+    return true; // Keep channel open for async response
+  }
+
   return false;
 });

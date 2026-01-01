@@ -9,6 +9,8 @@ class ReplyAction extends BaseAction {
     super('gmail_reply', 'Reply to Email');
     this.provider = gmailProvider;
     this.confirmationOverlay = new ConfirmationOverlay();
+    // This action can be a quick action button - it doesn't need user input
+    this.showAsQuickAction = true;
   }
 
   /**

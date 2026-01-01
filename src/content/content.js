@@ -117,8 +117,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   // Handle action execution requests
   if (request.action === 'execute_action') {
-    console.log('content.js: Executing action command:', request.command);
-
     // Execute asynchronously
     (async () => {
       try {
@@ -131,7 +129,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           return;
         }
 
-        const result = await registry.handleCommand(request.command);
+        // Ensure registry is initialized before accessing actions
+        await registry.initialize();
+
+        let result;
+
+        // Check if this is a direct action execution (from quick action button)
+        // or a command-based execution (from chat)
+        if (request.actionKey) {
+          // Direct action execution - get the action by key and run it
+          console.log('content.js: Executing action by key:', request.actionKey, 'with input:', request.userInput);
+
+          const action = registry.actions.get(request.actionKey);
+          if (!action) {
+            sendResponse({
+              success: false,
+              error: `Action '${request.actionKey}' not found`
+            });
+            return;
+          }
+
+          result = await action.run(request.userInput || '');
+        } else if (request.command) {
+          // Command-based execution - parse and execute
+          console.log('content.js: Executing action command:', request.command);
+          result = await registry.handleCommand(request.command);
+        } else {
+          sendResponse({
+            success: false,
+            error: 'Missing actionKey or command'
+          });
+          return;
+        }
 
         sendResponse({
           success: result.success,

@@ -290,4 +290,29 @@ class GmailProvider {
       }, timeout);
     });
   }
+
+  /**
+   * Get LLM response for a prompt
+   * @param {string} systemPrompt - System prompt
+   * @param {string} userPrompt - User prompt
+   * @returns {Promise<string>} LLM response
+   */
+  async getLLMResponse(systemPrompt, userPrompt) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'chat',
+        systemPrompt: systemPrompt,
+        userPrompt: userPrompt
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to get LLM response');
+      }
+
+      return response.response;
+    } catch (error) {
+      console.error('Error getting LLM response:', error);
+      throw error;
+    }
+  }
 }

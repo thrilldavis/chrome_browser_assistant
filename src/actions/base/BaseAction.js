@@ -10,6 +10,9 @@ class BaseAction {
   constructor(id, displayName) {
     this.id = id;
     this.displayName = displayName;
+    // By default, actions are not shown as quick action buttons
+    // Actions that don't require user input context should set this to true
+    this.showAsQuickAction = false;
   }
 
   /**

@@ -259,6 +259,6 @@ Apache 2.0 license
 
 ## Version
 
-Current version: 0.1.0 (December 2025)
+Current version: 0.0.2 (December 2024)
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.

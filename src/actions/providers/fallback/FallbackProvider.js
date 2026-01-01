@@ -252,8 +252,37 @@ Analyze the page and create a step-by-step plan to execute this command.`;
       throw new Error(`Could not find element with label: ${target}`);
     }
 
-    // Click it
+    // Click it with proper event dispatching
+    // Some apps (like Gmail) require full mouse events, not just .click()
+    console.log(`[FallbackProvider] Clicking element with full mouse events...`);
+
+    // Focus the element first
+    element.focus();
+
+    // Dispatch mousedown event
+    element.dispatchEvent(new MouseEvent('mousedown', {
+      bubbles: true,
+      cancelable: true,
+      view: window
+    }));
+
+    // Dispatch mouseup event
+    element.dispatchEvent(new MouseEvent('mouseup', {
+      bubbles: true,
+      cancelable: true,
+      view: window
+    }));
+
+    // Dispatch click event
+    element.dispatchEvent(new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      view: window
+    }));
+
+    // Also call the native click for good measure
     element.click();
+
     console.log(`[FallbackProvider] Clicked element:`, target);
   }
 
@@ -392,6 +421,31 @@ Analyze the page and create a step-by-step plan to execute this command.`;
    */
   async executeNavigate(url) {
     window.location.href = url;
+  }
+
+  /**
+   * Get LLM response for a prompt
+   * @param {string} systemPrompt - System prompt
+   * @param {string} userPrompt - User prompt
+   * @returns {Promise<string>} LLM response
+   */
+  async getLLMResponse(systemPrompt, userPrompt) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'chat',
+        systemPrompt: systemPrompt,
+        userPrompt: userPrompt
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to get LLM response');
+      }
+
+      return response.response;
+    } catch (error) {
+      console.error('Error getting LLM response:', error);
+      throw error;
+    }
   }
 
   /**

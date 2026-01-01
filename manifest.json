@@ -50,10 +50,13 @@
       "src/actions/providers/gmail/GmailProvider.js",
       "src/actions/providers/gmail/actions/ReplyAction.js",
       "src/actions/providers/gmail/actions/ComposeAction.js",
+      "src/actions/providers/gmail/actions/SummarizeThreadAction.js",
       "src/actions/providers/googledocs/GoogleDocsProvider.js",
       "src/actions/providers/googledocs/actions/WriteTextAction.js",
+      "src/actions/providers/googledocs/actions/SummarizeAction.js",
       "src/actions/providers/fallback/FallbackProvider.js",
       "src/actions/providers/fallback/actions/GenericAction.js",
+      "src/actions/providers/fallback/actions/SummarizePageAction.js",
       "src/actions/core/ActionRegistry.js",
       "src/actions/actions-loader.js"
     ]

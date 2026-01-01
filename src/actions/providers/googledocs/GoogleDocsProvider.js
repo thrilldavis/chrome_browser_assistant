@@ -32,11 +32,30 @@ class GoogleDocsProvider {
     const isDoc = window.location.pathname.includes('/document/');
     const isSheet = window.location.pathname.includes('/spreadsheets/');
 
+    // Extract document text using the GoogleWorkspaceExtractor
+    let documentText = '';
+    let documentTitle = document.title;
+
+    // Create extractor instance (GoogleWorkspaceExtractor is loaded in content.js)
+    if (typeof GoogleWorkspaceExtractor !== 'undefined') {
+      const workspaceExtractor = new GoogleWorkspaceExtractor();
+
+      if (workspaceExtractor.isGoogleWorkspace()) {
+        const extracted = await workspaceExtractor.extractContent();
+        if (extracted && extracted.success) {
+          documentText = extracted.text || '';
+          documentTitle = extracted.title || document.title;
+        }
+      }
+    }
+
     return {
       provider: this.name,
       url: window.location.href,
       hostname: window.location.hostname,
       title: document.title,
+      documentTitle: documentTitle,
+      documentText: documentText,
       documentType: isDoc ? 'document' : isSheet ? 'spreadsheet' : 'unknown',
       editorElement: this.findEditorElement()
     };
@@ -80,4 +99,29 @@ class GoogleDocsProvider {
    * - File menu refocusing tricks - still loses focus
    * - Character-by-character keyboard events - requires document focus
    */
+
+  /**
+   * Get LLM response for a prompt
+   * @param {string} systemPrompt - System prompt
+   * @param {string} userPrompt - User prompt
+   * @returns {Promise<string>} LLM response
+   */
+  async getLLMResponse(systemPrompt, userPrompt) {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'chat',
+        systemPrompt: systemPrompt,
+        userPrompt: userPrompt
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to get LLM response');
+      }
+
+      return response.response;
+    } catch (error) {
+      console.error('Error getting LLM response:', error);
+      throw error;
+    }
+  }
 }

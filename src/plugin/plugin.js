@@ -477,14 +477,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     // Get all necessary DOM elements
-    const summaryEl = document.getElementById('summary');
     const chatBox = document.getElementById('chat-box');
     const form = document.getElementById('chat-form');
     const promptField = document.getElementById('prompt');
-    const summaryLoader = document.getElementById('summary-loader');
     const chatLoader = document.getElementById('chat-loader');
     const modelSelect = document.getElementById('model-select');
-    const summarizeBtn = document.getElementById('summarize-btn');
     const pageIndicator = document.getElementById('current-page-indicator');
 
     // Check if background is ready
@@ -531,10 +528,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const configUI = new ConfigurationUI();
 
     // --- UI State Helper Functions ---
-    const setSummaryLoading = (isLoading) => {
-      summaryLoader.style.display = isLoading ? 'block' : 'none';
-      summaryEl.style.display = isLoading ? 'none' : 'block';
-    };
     const setChatLoading = (isLoading) => {
       chatLoader.style.display = isLoading ? 'block' : 'none';
     };
@@ -543,15 +536,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       form.querySelector('button').disabled = isDisabled;
       promptField.placeholder = isDisabled ? 'Please wait...' : 'Ask anything…';
     };
-    const setSummarizeDisabled = (isDisabled) => {
-      if (summarizeBtn) {
-        summarizeBtn.disabled = isDisabled;
-      }
-    };
-
-    // Shared state for page content and summary
-    let pageText = null;
-    let pageSummary = null;
 
     // Conversation history for multi-turn chat
     let conversationHistory = [];
@@ -573,24 +557,146 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
+    // Function to update quick actions based on available actions
+    async function updateQuickActions(retryCount = 0) {
+      try {
+        const quickActionsContainer = document.getElementById('quick-actions-container');
+
+        // Query available actions from background
+        const response = await chrome.runtime.sendMessage({ action: 'get_available_actions' });
+        const availableActions = response?.actions || [];
+
+        console.log('Available actions:', availableActions);
+
+        // If no actions found and we haven't retried enough, try again after a delay
+        if (availableActions.length === 0 && retryCount < 3) {
+          console.log(`No actions found, retrying in ${(retryCount + 1) * 200}ms... (attempt ${retryCount + 1}/3)`);
+          setTimeout(() => updateQuickActions(retryCount + 1), (retryCount + 1) * 200);
+          return;
+        }
+
+        // Clear and populate quick action buttons
+        quickActionsContainer.innerHTML = '';
+
+        // Map action IDs to icons
+        const actionIcons = {
+          'gmail_reply': '↩️',
+          'gmail_compose': '✉️',
+          'gmail_summarize': '📋',
+          'googledocs_summarize': '📄',
+          'fallback_summarize': '📝',
+          'write_text': '📝',
+          'generic_action': '⚡'
+        };
+
+        availableActions.forEach(action => {
+          const button = document.createElement('button');
+          button.className = 'quick-action-btn';
+          button.dataset.actionKey = action.key;
+
+          const icon = document.createElement('span');
+          icon.className = 'icon';
+          icon.textContent = actionIcons[action.id] || '⚡';
+
+          const label = document.createElement('span');
+          label.textContent = action.name;
+
+          button.appendChild(icon);
+          button.appendChild(label);
+
+          // Add click handler to trigger action
+          button.addEventListener('click', async () => {
+            console.log('Quick action clicked:', action.key);
+            // Trigger the action via background
+            try {
+              setChatDisabled(true);
+              button.disabled = true;
+
+              const result = await chrome.runtime.sendMessage({
+                action: 'execute_action',
+                actionKey: action.key,
+                userInput: '' // Quick actions don't need user input
+              });
+
+              button.disabled = false;
+              setChatDisabled(false);
+
+              if (result.success) {
+                console.log('Action executed successfully:', result);
+
+                // Add result message to chat box
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'chat-message ai-message';
+
+                // Use renderContent to support markdown formatting
+                // Provide fallback if message is undefined or empty
+                const displayMessage = result.message || 'Action completed successfully';
+                if (typeof renderContent === 'function') {
+                  renderContent(messageDiv, displayMessage);
+                } else {
+                  messageDiv.textContent = displayMessage;
+                }
+
+                chatBox.appendChild(messageDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+
+                // Add to conversation history so it can be used as context for future chat
+                conversationHistory.push({
+                  user: `[Action: ${action.name}]`,
+                  assistant: displayMessage
+                });
+              } else {
+                console.error('Action failed:', result.message);
+
+                // Add error to chat box
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'chat-message ai-message';
+                // Provide fallback if message is undefined or empty
+                const errorMessage = result.message || 'An unknown error occurred';
+                errorDiv.textContent = `✗ ${errorMessage}`;
+                chatBox.appendChild(errorDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+              }
+            } catch (error) {
+              console.error('Error executing quick action:', error);
+              button.disabled = false;
+              setChatDisabled(false);
+
+              // Add error to chat box
+              const errorDiv = document.createElement('div');
+              errorDiv.className = 'chat-message ai-message';
+              errorDiv.textContent = `✗ Error: ${error.message}`;
+              chatBox.appendChild(errorDiv);
+              chatBox.scrollTop = chatBox.scrollHeight;
+            }
+          });
+
+          quickActionsContainer.appendChild(button);
+        });
+      } catch (error) {
+        console.error('Error updating quick actions:', error);
+      }
+    }
+
     // Update indicator on load
     await updatePageIndicator();
 
-    // Listen for tab changes to update the indicator and clear cached content
+    // Update quick actions on load
+    await updateQuickActions();
+
+    // Listen for tab changes to update the indicator and actions
     chrome.tabs.onActivated.addListener(async () => {
       await updatePageIndicator();
-      // Clear cached page text so next summarize fetches from new tab
-      pageText = null;
-      console.log('Tab changed: cleared cached page text');
+      await updateQuickActions();
+      console.log('Tab changed');
     });
 
     // Listen for tab URL updates
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (changeInfo.url && tab.active) {
         await updatePageIndicator();
-        // Clear cached page text when URL changes
-        pageText = null;
-        console.log('URL changed: cleared cached page text');
+        await updateQuickActions();
+        console.log('URL changed');
       }
     });
 
@@ -600,76 +706,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check if current model is configured
     const isConfigured = await configUI.isCurrentModelConfigured();
 
-    // Show initial message in summary area
+    // Disable chat if model not configured
     if (!isConfigured) {
-      summaryEl.textContent = 'Please configure the selected model to start using the assistant.';
       setChatDisabled(true);
     } else {
-      summaryEl.textContent = 'Click "Summarize" to generate a summary of this page, or start chatting below.';
       setChatDisabled(false);
     }
 
-    // Add initial warning message to chat
-    const initialWarningDiv = document.createElement('div');
-    initialWarningDiv.className = 'chat-message ai-message';
-    initialWarningDiv.innerHTML = `<strong>💡 Tip:</strong> To chat about the current page, click <strong>Summarize</strong> first to give me context about the page content. You can also chat with me about anything without summarizing.`;
-    chatBox.appendChild(initialWarningDiv);
-
-    // Enable chat immediately (no auto-summarization)
+    // Enable chat immediately
     promptField.focus();
-
-    // Set up Summarize button
-    if (summarizeBtn) {
-      summarizeBtn.addEventListener('click', async () => {
-        console.log('Summarize button clicked');
-
-        // Check if model is configured
-        const isConfigured = await configUI.isCurrentModelConfigured();
-        if (!isConfigured) {
-          summaryEl.textContent = 'Please configure the selected model before summarizing.';
-          return;
-        }
-
-        setSummaryLoading(true);
-        setSummarizeDisabled(true);
-        setChatDisabled(true);
-
-        // Get page content if not already loaded
-        if (!pageText) {
-          pageText = await getPageContent();
-        }
-
-        if (!pageText) {
-          summaryEl.textContent = 'No content available to summarize on this page. This may be an empty page, a restricted page (like chrome:// URLs), or a page with no readable content.';
-          setSummaryLoading(false);
-          setSummarizeDisabled(false);
-          setChatDisabled(false);
-          return;
-        }
-
-        // Generate summary
-        try {
-          const fullSummary = await generateFullSummary(pageText);
-          console.log("Generated summary: " + fullSummary);
-
-          // Store summary for chat context
-          pageSummary = fullSummary;
-
-          // Remove all <think>...</think> blocks and their contents
-          const cleanedSummary = fullSummary.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-          console.log(`Cleaned summary: ${cleanedSummary}`);
-          renderContent(summaryEl, cleanedSummary);
-        } catch (error) {
-          console.error('Error generating summary:', error);
-          summaryEl.textContent = `Error: ${error.message}`;
-        }
-
-        setSummaryLoading(false);
-        setSummarizeDisabled(false);
-        setChatDisabled(false);
-        promptField.focus();
-      });
-    }
 
     // Set up unified chat handler
     form.onsubmit = async (e) => {
@@ -710,7 +755,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (actionResponse.success) {
             actionMessageDiv.textContent = `✓ ${actionResponse.message}`;
           } else {
-            actionMessageDiv.textContent = `✗ ${actionResponse.error || 'Action failed'}`;
+            // Use message field for errors (consistent with content.js response format)
+            const errorMessage = actionResponse.message || actionResponse.error || 'Action failed';
+            actionMessageDiv.textContent = `✗ ${errorMessage}`;
           }
 
           chatBox.appendChild(actionMessageDiv);
@@ -727,51 +774,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         // If action check fails, proceed with regular chat
       }
 
-      // Build system prompt and user prompt based on available context
-      let systemPrompt, chatUserPrompt;
+      // Build system prompt and user prompt based on conversation history
+      let systemPrompt = `You are a helpful assistant. Answer the user's question based on the conversation history.`;
+      let chatUserPrompt;
 
-      if (pageSummary) {
-        // Chat with page summary context
-        systemPrompt = `You are a helpful assistant. Answer the user's question based on the provided summary of a webpage.
-If the summary does not contain the answer, you may use your general knowledge.`;
-
-        // Build conversation context with history
-        let conversationContext = `--- SUMMARY CONTEXT ---
-${pageSummary}
------------------------
-
-`;
-
-        // Add conversation history
-        if (conversationHistory.length > 0) {
-          conversationContext += `--- CONVERSATION HISTORY ---\n`;
-          for (const turn of conversationHistory) {
-            conversationContext += `User: ${turn.user}\nAssistant: ${turn.assistant}\n\n`;
-          }
-          conversationContext += `-----------------------\n\n`;
+      // Build conversation with history
+      if (conversationHistory.length > 0) {
+        let conversationContext = `--- CONVERSATION HISTORY ---\n`;
+        for (const turn of conversationHistory) {
+          conversationContext += `User: ${turn.user}\nAssistant: ${turn.assistant}\n\n`;
         }
-
-        conversationContext += `User Question: "${userPrompt}"\n\nYour Answer:`;
+        conversationContext += `-----------------------\n\n`;
+        conversationContext += `User: ${userPrompt}\n\nYour Answer:`;
         chatUserPrompt = conversationContext;
       } else {
-        // Chat without page context (general assistant)
-        systemPrompt = `You are a helpful assistant. Answer the user's question to the best of your ability.`;
-
-        // Build conversation with history only
-        if (conversationHistory.length > 0) {
-          let conversationContext = `--- CONVERSATION HISTORY ---\n`;
-          for (const turn of conversationHistory) {
-            conversationContext += `User: ${turn.user}\nAssistant: ${turn.assistant}\n\n`;
-          }
-          conversationContext += `-----------------------\n\n`;
-          conversationContext += `User: ${userPrompt}\n\nYour Answer:`;
-          chatUserPrompt = conversationContext;
-        } else {
-          chatUserPrompt = userPrompt;
-        }
+        chatUserPrompt = userPrompt;
       }
 
-      console.log(`Getting response from model (with context: ${!!pageSummary}, history length: ${conversationHistory.length})`);
+      console.log(`Getting response from model (history length: ${conversationHistory.length})`);
       try {
         const aiResponse = await BackgroundAPI.chat(systemPrompt, chatUserPrompt);
         const cleanedResponse = aiResponse.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
@@ -802,6 +822,23 @@ ${pageSummary}
       setChatDisabled(false);
       promptField.focus();
     };
+
+    // Clear chat button handler
+    const clearChatBtn = document.getElementById('clear-chat-btn');
+    if (clearChatBtn) {
+      clearChatBtn.addEventListener('click', () => {
+        // Clear the chat box
+        chatBox.innerHTML = '';
+
+        // Clear conversation history
+        conversationHistory = [];
+
+        console.log('Chat cleared');
+
+        // Focus back on input
+        promptField.focus();
+      });
+    }
 
     console.log("Initialization complete!");
 

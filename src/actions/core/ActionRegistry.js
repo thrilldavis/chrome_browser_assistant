@@ -50,9 +50,11 @@ class ActionRegistry {
       // Register Gmail actions
       const replyAction = new ReplyAction(gmailProvider);
       const composeAction = new ComposeAction(gmailProvider);
+      const summarizeThreadAction = new SummarizeThreadAction(gmailProvider);
 
       this.actions.set('reply', replyAction);
       this.actions.set('compose', composeAction);
+      this.actions.set('summarize', summarizeThreadAction);
 
       console.log('Gmail provider and actions registered');
     }
@@ -71,8 +73,10 @@ class ActionRegistry {
 
       // Register Google Docs actions
       const writeTextAction = new WriteTextAction(googleDocsProvider);
+      const summarizeAction = new SummarizeAction(googleDocsProvider);
 
       this.actions.set('write', writeTextAction);
+      this.actions.set('summarize_doc', summarizeAction);
 
       console.log('Google Docs provider and actions registered');
     }
@@ -87,11 +91,20 @@ class ActionRegistry {
     const fallbackProvider = new FallbackProvider();
     this.providers.set('fallback', fallbackProvider);
 
-    // Register generic action
+    // Register fallback actions
     const genericAction = new GenericAction(fallbackProvider);
     this.actions.set('generic', genericAction);
 
-    console.log('Fallback provider and generic action registered');
+    // Only register fallback summarize if no specialized summarize action exists
+    if (!this.actions.has('summarize_doc') && !this.actions.has('summarize')) {
+      const summarizePageAction = new SummarizePageAction(fallbackProvider);
+      this.actions.set('summarize_page', summarizePageAction);
+      console.log('Fallback summarize action registered');
+    } else {
+      console.log('Skipping fallback summarize - specialized summarize action already registered');
+    }
+
+    console.log('Fallback provider and actions registered');
   }
 
   /**
@@ -167,6 +180,7 @@ class ActionRegistry {
 
   /**
    * Get available actions for current page
+   * Only returns actions that should be shown as quick action buttons
    * @returns {Promise<Array>}
    */
   async getAvailableActions() {
@@ -176,7 +190,8 @@ class ActionRegistry {
 
     for (const [name, action] of this.actions.entries()) {
       const canExecute = await action.canExecute();
-      if (canExecute) {
+      // Only include actions that should be shown as quick action buttons
+      if (canExecute && action.showAsQuickAction) {
         available.push({
           id: action.id,
           name: action.displayName,
@@ -191,3 +206,27 @@ class ActionRegistry {
 
 // Create global instance
 window.browserAssistantActionRegistry = window.browserAssistantActionRegistry || new ActionRegistry();
+
+// Listen for messages from background script / plugin
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  const registry = window.browserAssistantActionRegistry;
+
+  if (request.action === 'get_available_actions') {
+    // Get available actions for the current page
+    (async () => {
+      try {
+        const actions = await registry.getAvailableActions();
+        sendResponse({ actions });
+      } catch (error) {
+        console.error('Error getting available actions:', error);
+        sendResponse({ actions: [] });
+      }
+    })();
+    return true; // Keep channel open for async response
+  }
+
+  // Note: execute_action is handled in content.js, not here
+  // This listener only handles get_available_actions
+
+  return false;
+});
