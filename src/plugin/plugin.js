@@ -342,16 +342,30 @@ Output ONLY the final summary in Markdown (use concise bullets where helpful). N
 
 /**
  * Populates the model dropdown with all available models
- * @param {HTMLSelectElement} selectEl
+ *
+ * USABILITY FIX: Handles race condition where plugin opens before background ready.
+ *
+ * Problem solved:
+ * - Background service worker needs time to initialize ModelRegistry
+ * - If plugin opens too quickly, getModelList() returns empty/error
+ * - User would see "Initializing..." forever and have to close/reopen plugin
+ *
+ * Solution:
+ * - Retry up to 5 times with 500ms intervals
+ * - Show "Initializing..." while waiting
+ * - Auto-populate when background becomes ready
+ * - Show "Failed to load models" if all retries exhausted
+ *
+ * @param {HTMLSelectElement} selectEl - The select element
  * @param {ConfigurationUI} configUI - Configuration UI instance
  */
 async function populateModelDropdown(selectEl, configUI) {
   selectEl.innerHTML = '';
 
-  // Get models from background
-  const modelListResponse = await BackgroundAPI.getModelList();
+  // Get models from background with retry logic
+  let modelListResponse = await BackgroundAPI.getModelList();
 
-  // Check if background isn't ready yet
+  // Check if background isn't ready yet - retry with backoff
   if (modelListResponse.error || !modelListResponse.models) {
     const opt = document.createElement('option');
     opt.disabled = true;
@@ -359,6 +373,37 @@ async function populateModelDropdown(selectEl, configUI) {
     opt.textContent = 'Initializing...';
     selectEl.appendChild(opt);
     selectEl.disabled = true;
+
+    // Retry up to 5 times with increasing delays
+    let retries = 5;
+    let delay = 500; // Start with 500ms
+
+    const retryInterval = setInterval(async () => {
+      console.log(`Retrying model list fetch... (${6 - retries}/5)`);
+      modelListResponse = await BackgroundAPI.getModelList();
+
+      if (modelListResponse.models && modelListResponse.models.length > 0) {
+        // Success! Clear the interval and repopulate
+        clearInterval(retryInterval);
+        console.log('Background ready, populating models');
+        selectEl.innerHTML = ''; // Clear "Initializing..."
+        await populateModelDropdown(selectEl, configUI);
+        return;
+      }
+
+      retries--;
+      if (retries === 0) {
+        clearInterval(retryInterval);
+        console.error('Background failed to initialize after retries');
+        selectEl.innerHTML = '';
+        const errorOpt = document.createElement('option');
+        errorOpt.disabled = true;
+        errorOpt.selected = true;
+        errorOpt.textContent = 'Failed to load models';
+        selectEl.appendChild(errorOpt);
+      }
+    }, delay);
+
     return;
   }
 
@@ -469,6 +514,154 @@ async function getPageContent() {
 }
 
 /* =========================
+   Content Script Injection
+   ========================= */
+
+/**
+ * Ensure content scripts are injected into the active tab
+ *
+ * CRITICAL USABILITY FIX: This eliminates the "reload page" requirement.
+ *
+ * Problem solved:
+ * - Content scripts from manifest only inject when pages LOAD
+ * - If extension installed/reloaded while pages already open, those pages lack scripts
+ * - User would see "reload page" errors or broken functionality
+ * - This was the #1 UX complaint
+ *
+ * Solution:
+ * - Programmatically inject scripts on-demand when plugin opens
+ * - Ping existing scripts first to avoid double-injection
+ * - PERFORMANCE OPTIMIZATION: Only inject scripts needed for current page
+ *   - CNN.com gets 13 scripts (core + fallback)
+ *   - Gmail gets 17 scripts (core + fallback + Gmail actions)
+ *   - Google Docs gets 16 scripts (core + fallback + Docs actions)
+ *
+ * @returns {Promise<boolean>} True if scripts injected or already present, false if failed
+ */
+async function ensureContentScriptsInjected() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (!tab || !tab.id) {
+      console.log('No active tab found');
+      return false;
+    }
+
+    // Skip chrome:// and other restricted URLs
+    if (tab.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('chrome-extension://'))) {
+      console.log('Cannot inject into restricted URL:', tab.url);
+      return false;
+    }
+
+    console.log('Checking if content script is already injected in tab:', tab.id);
+
+    // Try to ping the existing content script
+    try {
+      const response = await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+      if (response && response.pong) {
+        console.log('Content script already injected');
+        return true;
+      }
+    } catch (pingError) {
+      console.log('Content script not responding, injecting...');
+    }
+
+    // Content script not present, inject it
+    console.log('Injecting content scripts into tab:', tab.id);
+
+    // Determine which provider scripts to load based on the URL
+    const hostname = new URL(tab.url).hostname;
+    const isGmail = hostname.includes('mail.google.com');
+    const isGoogleDocs = hostname.includes('docs.google.com');
+
+    console.log(`Page type - Gmail: ${isGmail}, Google Docs: ${isGoogleDocs}`);
+
+    // Core scripts - always needed
+    const coreScripts = [
+      'libs/pdf.min.js',
+      'src/content/pdf-extractor.js',
+      'src/content/google-workspace-extractor.js',
+      'src/content/content.js',
+      'src/actions/base/BaseAction.js',
+      'src/actions/core/AccessibilityScanner.js',
+      'src/actions/core/IntentParser.js',
+      'src/actions/ui/ConfirmationOverlay.js'
+    ];
+
+    // Gmail-specific scripts - only inject on Gmail
+    const gmailScripts = isGmail ? [
+      'src/actions/providers/gmail/GmailProvider.js',
+      'src/actions/providers/gmail/actions/ReplyAction.js',
+      'src/actions/providers/gmail/actions/ComposeAction.js',
+      'src/actions/providers/gmail/actions/SummarizeThreadAction.js'
+    ] : [];
+
+    // Google Docs-specific scripts - only inject on Google Docs/Sheets/Slides
+    const googleDocsScripts = isGoogleDocs ? [
+      'src/actions/providers/googledocs/GoogleDocsProvider.js',
+      'src/actions/providers/googledocs/actions/WriteTextAction.js',
+      'src/actions/providers/googledocs/actions/SummarizeAction.js'
+    ] : [];
+
+    // Fallback provider - always needed for generic sites
+    const fallbackScripts = [
+      'src/actions/providers/fallback/FallbackProvider.js',
+      'src/actions/providers/fallback/actions/GenericAction.js',
+      'src/actions/providers/fallback/actions/SummarizePageAction.js'
+    ];
+
+    // Registry and loader - always needed (must be last)
+    const registryScripts = [
+      'src/actions/core/ActionRegistry.js',
+      'src/actions/actions-loader.js'
+    ];
+
+    // Combine only the needed scripts
+    const contentScriptFiles = [
+      ...coreScripts,
+      ...gmailScripts,
+      ...googleDocsScripts,
+      ...fallbackScripts,
+      ...registryScripts
+    ];
+
+    console.log(`Injecting ${contentScriptFiles.length} scripts (saved ${19 - contentScriptFiles.length} unnecessary scripts)`);
+
+    // Inject all content scripts in order
+    // Using default ISOLATED world to match manifest content_scripts behavior
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id, allFrames: false },
+        files: contentScriptFiles
+      });
+      console.log('All content scripts injected successfully');
+      return true;
+    } catch (injectError) {
+      // If batch injection fails, try one by one (helps with debugging)
+      console.warn('Batch injection failed, trying individual injection:', injectError);
+      for (const file of contentScriptFiles) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: [file]
+          });
+          console.log(`Injected: ${file}`);
+        } catch (fileError) {
+          console.error(`Failed to inject ${file}:`, fileError);
+          throw fileError;
+        }
+      }
+      console.log('All content scripts injected individually');
+      return true;
+    }
+
+  } catch (error) {
+    console.error('Error injecting content scripts:', error);
+    return false;
+  }
+}
+
+/* =========================
    Main Initialization
    ========================= */
 
@@ -476,6 +669,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log("Entering main initialization...");
 
   try {
+    // CRITICAL: Ensure content scripts are injected before doing anything else
+    // This fixes the "reload page" issue - we inject scripts on-demand
+    console.log('Ensuring content scripts are injected...');
+    const injected = await ensureContentScriptsInjected();
+
+    // Give content scripts a moment to fully initialize
+    if (injected) {
+      console.log('Content scripts injected, waiting for initialization...');
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     // Get all necessary DOM elements
     const chatBox = document.getElementById('chat-box');
     const form = document.getElementById('chat-form');

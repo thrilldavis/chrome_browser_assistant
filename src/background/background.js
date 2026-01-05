@@ -129,7 +129,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // Make a chat request using the current model
     (async () => {
       try {
-        const response = await modelRegistry.chat(request.systemPrompt, request.userPrompt);
+        let response = await modelRegistry.chat(request.systemPrompt, request.userPrompt);
+
+        // Post-process response to clean up special formatting
+        // Convert [[dc]...[/dc]](url) format to proper HTML links labeled "Source"
+        response = response.replace(/\[\[dc\][^\]]+\[\/dc\]\]\((https?:\/\/[^\)]+)\)/g, '<a href="$1">Source</a>');
+
         sendResponse({ success: true, response });
       } catch (error) {
         sendResponse({ success: false, error: error.message });

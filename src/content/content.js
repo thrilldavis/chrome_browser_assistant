@@ -2,6 +2,12 @@
 console.log('content.js loaded');
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // Ping-pong to check if content script is loaded
+  if (request.action === 'ping') {
+    sendResponse({ pong: true });
+    return true;
+  }
+
   if (request.action === 'get_page_text') {
     // Handle extraction asynchronously
     (async () => {

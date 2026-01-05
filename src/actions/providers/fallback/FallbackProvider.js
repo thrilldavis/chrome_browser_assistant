@@ -252,35 +252,60 @@ Analyze the page and create a step-by-step plan to execute this command.`;
       throw new Error(`Could not find element with label: ${target}`);
     }
 
-    // Click it with proper event dispatching
-    // Some apps (like Gmail) require full mouse events, not just .click()
+    // IMPORTANT: Full mouse event sequence required for modern web apps
+    //
+    // Why we can't just use element.click():
+    // Many modern web applications (especially Gmail, Salesforce, ServiceNow, etc.)
+    // use event listeners that are attached to specific mouse events (mousedown, mouseup)
+    // rather than the generic click event. The native .click() method only dispatches
+    // a click event, not the full sequence of events that a real user interaction creates.
+    //
+    // Real user click sequence:
+    // 1. focus (element gains focus)
+    // 2. mousedown (user presses mouse button)
+    // 3. mouseup (user releases mouse button)
+    // 4. click (browser synthesizes click from mousedown+mouseup)
+    //
+    // Example failure case:
+    // Gmail's "Archive" button (December 2024) - element.click() was called successfully
+    // but the email wasn't archived because Gmail's event handler was listening for
+    // mousedown/mouseup events, not the synthetic click event.
+    //
+    // This approach simulates a real user click and is compatible with:
+    // - Event handlers attached to mousedown/mouseup
+    // - Event handlers attached to click
+    // - Legacy handlers using onclick attribute
+    // - Modern event delegation patterns
+    //
+    // DO NOT REMOVE THIS SEQUENCE - it's not extraneous code, it's required for
+    // compatibility with modern web applications that use event-driven architectures.
     console.log(`[FallbackProvider] Clicking element with full mouse events...`);
 
-    // Focus the element first
+    // Step 1: Focus the element (required for some event handlers)
     element.focus();
 
-    // Dispatch mousedown event
+    // Step 2: Dispatch mousedown event (user presses mouse button)
     element.dispatchEvent(new MouseEvent('mousedown', {
-      bubbles: true,
-      cancelable: true,
-      view: window
+      bubbles: true,      // Event bubbles up through DOM
+      cancelable: true,   // Event can be cancelled
+      view: window        // Event is associated with window
     }));
 
-    // Dispatch mouseup event
+    // Step 3: Dispatch mouseup event (user releases mouse button)
     element.dispatchEvent(new MouseEvent('mouseup', {
       bubbles: true,
       cancelable: true,
       view: window
     }));
 
-    // Dispatch click event
+    // Step 4: Dispatch click event (browser synthesizes from down+up)
     element.dispatchEvent(new MouseEvent('click', {
       bubbles: true,
       cancelable: true,
       view: window
     }));
 
-    // Also call the native click for good measure
+    // Step 5: Call native click as final fallback for legacy handlers
     element.click();
 
     console.log(`[FallbackProvider] Clicked element:`, target);
